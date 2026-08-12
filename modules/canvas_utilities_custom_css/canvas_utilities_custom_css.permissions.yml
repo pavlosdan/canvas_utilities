@@ -1,0 +1,4 @@
+administer canvas utilities custom css:
+  title: 'Administer Canvas Utilities custom CSS'
+  description: 'Create CSS that is delivered on public site pages. Grant only to trusted users.'
+  restrict access: true

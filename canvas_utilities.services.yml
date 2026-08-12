@@ -1,0 +1,17 @@
+services:
+  Drupal\canvas_utilities\PendingChanges\PendingChangesAdapterInterface:
+    class: Drupal\canvas_utilities\PendingChanges\DirectPublishAdapter
+
+  plugin.manager.canvas_utilities_capability:
+    class: Drupal\canvas_utilities\Plugin\CanvasUtilitiesCapabilityManager
+    parent: default_plugin_manager
+
+  Drupal\canvas_utilities\Controller\Api\V1\BootstrapController:
+    public: true
+    arguments:
+      - '@plugin.manager.canvas_utilities_capability'
+      - '@config.factory'
+      - '@extension.list.theme'
+      - '@csrf_token'
+      - '@current_user'
+      - '@Drupal\canvas_utilities\PendingChanges\PendingChangesAdapterInterface'

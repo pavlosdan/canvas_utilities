@@ -1,0 +1,9 @@
+canvas_utilities.api.v1.bootstrap:
+  path: '/canvas-utilities/api/v1/bootstrap'
+  defaults:
+    _controller: 'Drupal\canvas_utilities\Controller\Api\V1\BootstrapController::__invoke'
+  requirements:
+    _permission: 'access canvas utilities'
+  methods: [GET]
+  options:
+    _format: 'json'

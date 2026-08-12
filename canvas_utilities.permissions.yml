@@ -1,0 +1,8 @@
+access canvas utilities:
+  title: 'Access Canvas Utilities'
+  description: 'Access the Design system workspace in Canvas.'
+
+publish canvas utilities changes:
+  title: 'Publish Canvas Utilities changes'
+  description: 'Publish reviewed design-system drafts to the live site.'
+  restrict access: true

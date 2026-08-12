@@ -1,0 +1,7 @@
+name: Canvas Utilities Custom CSS
+type: module
+description: 'Provides guarded theme CSS overrides inside Canvas.'
+package: Canvas Utilities
+core_version_requirement: ^11
+dependencies:
+  - canvas_utilities:canvas_utilities

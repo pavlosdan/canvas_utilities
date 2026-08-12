@@ -1,0 +1,29 @@
+canvas_utilities_icons.library.*:
+  type: config_entity
+  label: 'Canvas Utilities icon library'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    id: { type: machine_name, label: 'ID' }
+    label: { type: required_label, label: 'Label' }
+    uuid: { type: uuid, label: 'UUID' }
+    status: { type: boolean, label: 'Enabled' }
+    theme: { type: machine_name, label: 'Theme' }
+    provider: { type: string, label: 'Source provider' }
+    prefix: { type: machine_name, label: 'Icon prefix' }
+    license: { type: string, label: 'License' }
+    source: { type: string, label: 'Source attribution' }
+    icons:
+      type: sequence
+      label: 'Icons'
+      sequence:
+        type: mapping
+        mapping:
+          id: { type: machine_name, label: 'Icon ID' }
+          label: { type: required_label, label: 'Icon label' }
+          group: { type: string, label: 'Group' }
+          uri: { type: string, label: 'Sanitized file URI' }
+          file_uuid: { type: uuid, label: 'File UUID' }
+          viewBox: { type: string, label: 'SVG viewBox' }
+          hash: { type: string, label: 'Content hash' }
+

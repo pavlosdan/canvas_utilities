@@ -1,0 +1,11 @@
+# Front-end dependencies installed by npm, in this module and any submodule.
+node_modules/
+
+# npm and Vite diagnostics.
+npm-debug.log*
+yarn-error.log*
+.vite/
+
+# Note: built bundles under ui/dist are deliberately NOT ignored. They are
+# shipped with the module and referenced by canvas_utilities.canvas_extension.yml,
+# so they must stay tracked.

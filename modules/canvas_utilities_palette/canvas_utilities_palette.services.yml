@@ -1,0 +1,14 @@
+services:
+  Drupal\canvas_utilities_palette\PalettePickerOptions:
+    arguments:
+      - '@entity_type.manager'
+
+  Drupal\canvas_utilities_palette\Controller\Api\V1\PaletteController:
+    public: true
+    arguments:
+      - '@entity_type.manager'
+
+  Drupal\canvas_utilities_palette\Controller\PaletteAssetController:
+    public: true
+    arguments:
+      - '@entity_type.manager'

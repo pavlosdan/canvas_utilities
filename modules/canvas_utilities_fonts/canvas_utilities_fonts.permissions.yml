@@ -1,0 +1,8 @@
+administer canvas utilities fonts:
+  title: 'Administer Canvas Utilities fonts'
+  description: 'Create font families and upload font files.'
+
+use remote canvas utilities assets:
+  title: 'Use remote Canvas Utilities assets'
+  description: 'Configure browser requests to approved remote asset providers.'
+  restrict access: true

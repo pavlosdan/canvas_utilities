@@ -1,0 +1,22 @@
+canvas_utilities:
+  enabled: true
+  label: 'Canvas Utilities'
+  description: 'Sanitized icon libraries managed inside Canvas.'
+  extractor: canvas_utilities_config
+  config:
+    managed: true
+  settings:
+    size:
+      title: 'Size'
+      type: integer
+      default: 24
+  template: >-
+    <svg
+      {{ attributes
+        .setAttribute('viewBox', viewBox)
+        .setAttribute('width', size|default(24))
+        .setAttribute('height', size|default(24))
+        .setAttribute('aria-hidden', 'true')
+        .addClass('canvas-utilities-icon')
+      }}
+    >{{ content }}</svg>

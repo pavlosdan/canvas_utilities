@@ -1,0 +1,8 @@
+name: Canvas Utilities Style Guide
+type: module
+description: 'Provides structured theme style-guide controls inside Canvas.'
+package: Canvas Utilities
+core_version_requirement: ^11.3
+php: 8.3
+dependencies:
+  - canvas_utilities:canvas_utilities

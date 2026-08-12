@@ -1,0 +1,5 @@
+administer canvas utilities icons:
+  title: 'Administer Canvas Utilities icons'
+  description: 'Import, browse, and remove SVG icon libraries.'
+  restrict access: true
+

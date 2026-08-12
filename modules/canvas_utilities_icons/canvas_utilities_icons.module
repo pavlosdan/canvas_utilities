@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * @file
+ * Hooks for Canvas Utilities Icons.
+ */
+
+declare(strict_types=1);
+
+use Drupal\canvas_utilities_icons\Entity\IconLibrary;
+use Drupal\Core\Entity\EntityInterface;
+
+/**
+ * Implements hook_ENTITY_TYPE_insert().
+ */
+function canvas_utilities_icons_canvas_utilities_icon_lib_insert(EntityInterface $entity): void {
+  canvas_utilities_icons_clear_core_icon_cache();
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update().
+ */
+function canvas_utilities_icons_canvas_utilities_icon_lib_update(EntityInterface $entity): void {
+  canvas_utilities_icons_clear_core_icon_cache();
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete().
+ */
+function canvas_utilities_icons_canvas_utilities_icon_lib_delete(EntityInterface $entity): void {
+  if ($entity instanceof IconLibrary) {
+    $storage = \Drupal::entityTypeManager()->getStorage('file');
+    foreach ($entity->getIcons() as $icon) {
+      foreach ($storage->loadByProperties(['uuid' => $icon['file_uuid']]) as $file) {
+        $file->delete();
+      }
+    }
+  }
+  canvas_utilities_icons_clear_core_icon_cache();
+}
+
+/**
+ * Clears core's icon pack discovery cache after library changes.
+ */
+function canvas_utilities_icons_clear_core_icon_cache(): void {
+  \Drupal::service('plugin.manager.icon_pack')->clearCachedDefinitions();
+}

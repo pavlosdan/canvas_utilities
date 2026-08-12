@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * @file
+ * Hooks for Canvas Utilities Fonts.
+ */
+
+declare(strict_types=1);
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\canvas_utilities_fonts\Entity\FontFamily;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_page_attachments().
+ *
+ * @phpstan-param array<string, mixed> $attachments
+ */
+function canvas_utilities_fonts_page_attachments(array &$attachments): void {
+  $active_theme = \Drupal::theme()->getActiveTheme()->getName();
+  $default_theme = (string) \Drupal::config('system.theme')->get('default');
+  if ($active_theme !== $default_theme) {
+    return;
+  }
+  foreach (\Drupal::entityTypeManager()->getStorage('canvas_utilities_font')->loadMultiple() as $entity) {
+    if ($entity instanceof FontFamily && $entity->status() && $entity->getTheme() === $default_theme && $entity->getProvider() === 'remote_stylesheet') {
+      $attachments['#attached']['html_head_link'][] = [['rel' => 'stylesheet', 'href' => $entity->getRemoteUrl()], TRUE];
+    }
+  }
+  $attachments['#attached']['html_head_link'][] = [[
+    'rel' => 'stylesheet',
+    'href' => Url::fromRoute('canvas_utilities_fonts.asset', ['theme' => $default_theme])->toString(),
+  ], TRUE,
+  ];
+  $attachments['#cache']['tags'][] = 'canvas_utilities_font_list';
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete().
+ */
+function canvas_utilities_fonts_canvas_utilities_font_delete(EntityInterface $entity): void {
+  if (!$entity instanceof FontFamily) {
+    return;
+  }
+  $storage = \Drupal::entityTypeManager()->getStorage('file');
+  foreach ($entity->getFaces() as $face) {
+    foreach ($storage->loadByProperties(['uuid' => $face['file_uuid']]) as $file) {
+      $file->delete();
+    }
+  }
+}

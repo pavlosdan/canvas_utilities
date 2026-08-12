@@ -1,0 +1,145 @@
+canvas_utilities_style_guide.definition.*:
+  type: config_entity
+  label: 'Style-guide definition'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    id:
+      type: machine_name
+      label: 'ID'
+    label:
+      type: required_label
+      label: 'Label'
+    uuid:
+      type: uuid
+      label: 'UUID'
+    status:
+      type: boolean
+      label: 'Enabled'
+    description:
+      type: text
+      label: 'Description'
+    theme:
+      type: machine_name
+      label: 'Theme'
+    guide_id:
+      type: machine_name
+      label: 'Public guide ID'
+    weight:
+      type: integer
+      label: 'Weight'
+    replaces:
+      type: string
+      label: 'Replaced provider'
+    preview:
+      type: mapping
+      label: 'Preview'
+      mapping:
+        path:
+          type: string
+          label: 'Internal preview path'
+    contexts:
+      type: sequence
+      label: 'Contexts'
+      sequence:
+        type: canvas_utilities_style_guide.context
+    groups:
+      type: sequence
+      label: 'Groups'
+      sequence:
+        type: canvas_utilities_style_guide.group
+
+canvas_utilities_style_guide.values.*:
+  type: config_entity
+  label: 'Style-guide values'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    id:
+      type: machine_name
+      label: 'ID'
+    label:
+      type: required_label
+      label: 'Label'
+    uuid:
+      type: uuid
+      label: 'UUID'
+    theme:
+      type: machine_name
+      label: 'Theme'
+    guide_id:
+      type: machine_name
+      label: 'Guide ID'
+    definition_hash:
+      type: string
+      label: 'Definition hash'
+    values:
+      type: sequence
+      label: 'Override values'
+      sequence:
+        type: sequence
+        label: 'Context values'
+        sequence:
+          type: canvas_utilities_style_guide.scalar_value
+
+canvas_utilities_style_guide.context:
+  type: mapping
+  label: 'Style-guide context'
+  mapping:
+    label:
+      type: required_label
+      label: 'Label'
+    selector:
+      type: string
+      label: 'CSS selector'
+
+canvas_utilities_style_guide.group:
+  type: mapping
+  label: 'Style-guide group'
+  mapping:
+    label:
+      type: required_label
+      label: 'Label'
+    weight:
+      type: integer
+      label: 'Weight'
+    controls:
+      type: sequence
+      label: 'Controls'
+      sequence:
+        type: canvas_utilities_style_guide.control
+
+canvas_utilities_style_guide.control:
+  type: mapping
+  label: 'Style-guide control'
+  mapping:
+    label:
+      type: required_label
+      label: 'Label'
+    description:
+      type: text
+      label: 'Description'
+    type:
+      type: string
+      label: 'Value type'
+    default:
+      type: sequence
+      label: 'Default values'
+      sequence:
+        type: canvas_utilities_style_guide.scalar_value
+    constraints:
+      type: ignore
+      label: 'Value-type constraints'
+    targets:
+      type: sequence
+      label: 'CSS targets'
+      sequence:
+        type: mapping
+        mapping:
+          property:
+            type: string
+            label: 'CSS property'
+
+canvas_utilities_style_guide.scalar_value:
+  type: undefined
+  label: 'Typed scalar style-guide value'

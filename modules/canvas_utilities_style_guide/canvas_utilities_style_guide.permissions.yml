@@ -1,0 +1,8 @@
+edit canvas utilities style guide values:
+  title: 'Edit Canvas Utilities style guide values'
+  description: 'Create drafts for structured theme style-guide values.'
+
+administer canvas utilities style guide definitions:
+  title: 'Administer Canvas Utilities style guide definitions'
+  description: 'Create and change trusted style-guide definitions and CSS targets.'
+  restrict access: true

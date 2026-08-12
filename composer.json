@@ -1,0 +1,13 @@
+{
+  "name": "drupal/canvas_utilities",
+  "description": "A design-system workspace for Drupal Canvas.",
+  "type": "drupal-module",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=8.3",
+    "drupal/canvas": "^1.10",
+    "drupal/core": "^11.3",
+    "enshrined/svg-sanitize": "^0.22",
+    "sabberworm/php-css-parser": "^9.4"
+  }
+}

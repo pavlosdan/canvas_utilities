@@ -1,0 +1,84 @@
+canvas_utilities_style_guide.api.v1.collection:
+  path: '/canvas-utilities/api/v1/style-guides/{theme}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_style_guide\Controller\Api\V1\StyleGuideController::collection'
+  requirements:
+    _permission: 'access canvas utilities'
+    theme: '[a-z][a-z0-9_]*'
+  methods: [GET]
+  options:
+    _format: 'json'
+
+canvas_utilities_style_guide.api.v1.draft:
+  path: '/canvas-utilities/api/v1/drafts/style-guide/{theme}/{guide}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_style_guide\Controller\Api\V1\StyleGuideController::draft'
+  requirements:
+    _permission: 'edit canvas utilities style guide values'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    guide: '[a-z][a-z0-9_]*'
+  methods: [PUT]
+  options:
+    _format: 'json'
+
+canvas_utilities_style_guide.api.v1.publish:
+  path: '/canvas-utilities/api/v1/publish/style-guide/{theme}/{guide}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_style_guide\Controller\Api\V1\StyleGuideController::publish'
+  requirements:
+    _permission: 'publish canvas utilities changes'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    guide: '[a-z][a-z0-9_]*'
+  methods: [POST]
+  options:
+    _format: 'json'
+
+canvas_utilities_style_guide.api.v1.definition.create:
+  path: '/canvas-utilities/api/v1/style-guide-definitions/{theme}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_style_guide\Controller\Api\V1\StyleGuideController::createDefinition'
+  requirements:
+    _permission: 'administer canvas utilities style guide definitions'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+  methods: [POST]
+  options:
+    _format: 'json'
+
+canvas_utilities_style_guide.api.v1.definition.update:
+  path: '/canvas-utilities/api/v1/style-guide-definitions/{theme}/{definition}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_style_guide\Controller\Api\V1\StyleGuideController::updateDefinition'
+  requirements:
+    _permission: 'administer canvas utilities style guide definitions'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    definition: '[a-z][a-z0-9_]*'
+  methods: [PUT]
+  options:
+    _format: 'json'
+
+canvas_utilities_style_guide.api.v1.definition.delete:
+  path: '/canvas-utilities/api/v1/style-guide-definitions/{theme}/{definition}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_style_guide\Controller\Api\V1\StyleGuideController::deleteDefinition'
+  requirements:
+    _permission: 'administer canvas utilities style guide definitions'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    definition: '[a-z][a-z0-9_]*'
+  methods: [DELETE]
+  options:
+    _format: 'json'
+
+canvas_utilities_style_guide.asset:
+  path: '/canvas-utilities/assets/{theme}/style-guide.css'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_style_guide\Controller\StyleGuideAssetController::__invoke'
+  requirements:
+    # Published design-system CSS is a public front-end asset.
+    _access: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+  methods: [GET]

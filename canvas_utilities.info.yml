@@ -1,0 +1,9 @@
+name: Canvas Utilities
+type: module
+description: 'Provides a design-system workspace inside Drupal Canvas.'
+package: Canvas Utilities
+core_version_requirement: ^11.3
+php: 8.3
+dependencies:
+  - canvas:canvas
+  - drupal:file

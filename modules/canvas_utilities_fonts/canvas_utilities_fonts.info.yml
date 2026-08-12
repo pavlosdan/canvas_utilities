@@ -1,0 +1,9 @@
+name: Canvas Utilities Fonts
+type: module
+description: 'Provides local and remote font families inside Canvas.'
+package: Canvas Utilities
+core_version_requirement: ^11.3
+php: 8.3
+dependencies:
+  - canvas_utilities:canvas_utilities
+  - drupal:file

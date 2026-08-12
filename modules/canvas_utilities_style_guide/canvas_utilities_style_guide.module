@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * Hooks for Canvas Utilities Style Guide.
+ */
+
+declare(strict_types=1);
+
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_page_attachments().
+ *
+ * @phpstan-param array<string, mixed> $attachments
+ */
+function canvas_utilities_style_guide_page_attachments(array &$attachments): void {
+  $active_theme = \Drupal::theme()->getActiveTheme()->getName();
+  $default_theme = (string) \Drupal::config('system.theme')->get('default');
+  if ($active_theme !== $default_theme) {
+    return;
+  }
+
+  $url = Url::fromRoute('canvas_utilities_style_guide.asset', [
+    'theme' => $default_theme,
+  ])->toString();
+  $attachments['#attached']['html_head_link'][] = [
+    [
+      'rel' => 'stylesheet',
+      'href' => $url,
+    ],
+    TRUE,
+  ];
+  $attachments['#cache']['tags'][] = 'canvas_utilities_style_guide_list';
+}

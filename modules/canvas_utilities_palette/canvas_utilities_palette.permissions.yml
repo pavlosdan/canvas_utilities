@@ -1,0 +1,8 @@
+administer canvas utilities palettes:
+  title: 'Administer Canvas Utilities palettes'
+  description: 'Create, edit, and remove reusable design-system palettes.'
+
+use unrestricted canvas utilities colors:
+  title: 'Use unrestricted Canvas Utilities colors'
+  description: 'Enter colors that are not part of an approved palette.'
+  restrict access: true

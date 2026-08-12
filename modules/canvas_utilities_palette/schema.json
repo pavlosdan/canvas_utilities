@@ -1,0 +1,10 @@
+{
+  "$defs": {
+    "color": {
+      "title": "Color",
+      "description": "A color selected from Canvas Utilities palettes or entered as a custom CSS color.",
+      "type": "string",
+      "x-canvas-utilities-picker": "color"
+    }
+  }
+}

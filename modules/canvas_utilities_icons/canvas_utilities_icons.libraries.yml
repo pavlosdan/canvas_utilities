@@ -1,0 +1,9 @@
+canvas_picker:
+  css:
+    component:
+      css/icon-picker.css: {}
+  js:
+    js/icon-picker.js: {}
+  dependencies:
+    - core/drupal
+    - core/once

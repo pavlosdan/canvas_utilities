@@ -1,0 +1,37 @@
+services:
+  Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideDiscovery:
+    arguments:
+      - '@extension.list.theme'
+      - '@entity_type.manager'
+      - '@cache.default'
+      - '%app.root%'
+
+  Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideValueValidator:
+    arguments:
+      - '@entity_type.manager'
+
+  Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideRepository:
+    arguments:
+      - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideDiscovery'
+      - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideValueValidator'
+      - '@entity_type.manager'
+      - '@tempstore.private'
+
+  Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideCssCompiler:
+    arguments:
+      - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideDiscovery'
+      - '@entity_type.manager'
+      - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideValueValidator'
+
+  Drupal\canvas_utilities_style_guide\Controller\Api\V1\StyleGuideController:
+    public: true
+    arguments:
+      - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideRepository'
+      - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideDiscovery'
+      - '@entity_type.manager'
+      - '@cache_tags.invalidator'
+
+  Drupal\canvas_utilities_style_guide\Controller\StyleGuideAssetController:
+    public: true
+    arguments:
+      - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideCssCompiler'

@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * @file
+ * Hooks for Canvas Utilities Custom CSS.
+ */
+
+declare(strict_types=1);
+
+use Drupal\canvas_utilities_custom_css\Entity\CustomCssOverride;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_page_attachments().
+ *
+ * @phpstan-param array<string, mixed> $attachments
+ */
+function canvas_utilities_custom_css_page_attachments(array &$attachments): void {
+  $theme = \Drupal::theme()->getActiveTheme()->getName();
+  if ($theme !== (string) \Drupal::config('system.theme')->get('default')) {
+    return;
+  }
+  $entity = \Drupal::entityTypeManager()->getStorage('canvas_utilities_css')->load($theme);
+  if ($entity instanceof CustomCssOverride && $entity->status() && $entity->getCss() !== '') {
+    $url = Url::fromRoute('canvas_utilities_custom_css.stylesheet', [
+      'theme' => $theme,
+      'fingerprint' => $entity->getFingerprint(),
+    ])->toString();
+    $attachments['#attached']['html_head_link'][] = [
+      ['rel' => 'stylesheet', 'href' => $url],
+      TRUE,
+    ];
+    $attachments['#cache']['tags'][] = 'config:' . $entity->getConfigDependencyName();
+  }
+}
+
+/**
+ * Implements hook_page_attachments_alter().
+ *
+ * Keeps the explicit override after all other contributed stylesheet links.
+ *
+ * @phpstan-param array<string, mixed> $attachments
+ */
+function canvas_utilities_custom_css_page_attachments_alter(array &$attachments): void {
+  $links = $attachments['#attached']['html_head_link'] ?? [];
+  $override = [];
+  foreach ($links as $key => $link) {
+    $href = $link[0]['href'] ?? '';
+    if (is_string($href) && str_contains($href, '/canvas-utilities/styles/custom-css/')) {
+      $override[] = $link;
+      unset($links[$key]);
+    }
+  }
+  $attachments['#attached']['html_head_link'] = array_merge($links, $override);
+}

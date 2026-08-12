@@ -1,0 +1,8 @@
+<?php
+
+/**
+ * @file
+ * Provides Canvas Utilities integration hooks.
+ */
+
+declare(strict_types=1);

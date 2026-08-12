@@ -1,0 +1,22 @@
+canvas_utilities_custom_css.override.*:
+  type: config_entity
+  label: 'Canvas Utilities custom CSS override'
+  mapping:
+    id:
+      type: string
+      label: 'ID'
+    label:
+      type: label
+      label: 'Label'
+    uuid:
+      type: uuid
+      label: 'UUID'
+    status:
+      type: boolean
+      label: 'Enabled'
+    theme:
+      type: string
+      label: 'Theme'
+    css:
+      type: text
+      label: 'CSS'

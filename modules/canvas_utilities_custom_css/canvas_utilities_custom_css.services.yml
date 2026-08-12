@@ -1,0 +1,13 @@
+services:
+  Drupal\canvas_utilities_custom_css\CssValidator: ~
+
+  Drupal\canvas_utilities_custom_css\Controller\Api\V1\CustomCssController:
+    public: true
+    arguments:
+      - '@entity_type.manager'
+      - '@Drupal\canvas_utilities_custom_css\CssValidator'
+
+  Drupal\canvas_utilities_custom_css\Controller\StylesheetController:
+    public: true
+    arguments:
+      - '@entity_type.manager'

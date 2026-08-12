@@ -1,0 +1,28 @@
+services:
+  Drupal\canvas_utilities_icons\IconPickerOptions:
+    arguments:
+      - '@entity_type.manager'
+      - '@file_url_generator'
+
+  plugin.manager.canvas_utilities_icon_source:
+    class: Drupal\canvas_utilities_icons\Plugin\IconSourceManager
+    parent: default_plugin_manager
+
+  Drupal\canvas_utilities_icons\Import\SvgSanitizer: ~
+
+  Drupal\canvas_utilities_icons\Import\IconImporter:
+    arguments:
+      - '@plugin.manager.canvas_utilities_icon_source'
+      - '@Drupal\canvas_utilities_icons\Import\SvgSanitizer'
+      - '@entity_type.manager'
+      - '@file.repository'
+      - '@file.usage'
+      - '@file_system'
+      - '@database'
+
+  Drupal\canvas_utilities_icons\Controller\Api\V1\IconController:
+    public: true
+    arguments:
+      - '@entity_type.manager'
+      - '@Drupal\canvas_utilities_icons\Import\IconImporter'
+      - '@file_url_generator'

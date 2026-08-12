@@ -1,0 +1,35 @@
+canvas_utilities_icons.api.v1.collection:
+  path: '/canvas-utilities/api/v1/icons/{theme}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_icons\Controller\Api\V1\IconController::collection'
+  requirements:
+    _permission: 'access canvas utilities'
+    theme: '[a-z][a-z0-9_]*'
+  methods: [GET]
+  options:
+    _format: 'json'
+
+canvas_utilities_icons.api.v1.import:
+  path: '/canvas-utilities/api/v1/icons/{theme}/import'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_icons\Controller\Api\V1\IconController::import'
+  requirements:
+    _permission: 'administer canvas utilities icons'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+  methods: [POST]
+  options:
+    _format: 'json'
+
+canvas_utilities_icons.api.v1.delete:
+  path: '/canvas-utilities/api/v1/icons/{theme}/{library}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_icons\Controller\Api\V1\IconController::delete'
+  requirements:
+    _permission: 'administer canvas utilities icons'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    library: '[a-z][a-z0-9_-]*'
+  methods: [DELETE]
+  options:
+    _format: 'json'

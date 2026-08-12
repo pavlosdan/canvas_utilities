@@ -1,0 +1,32 @@
+canvas_utilities_custom_css.api.v1.item:
+  path: '/canvas-utilities/api/v1/custom-css/{theme}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_custom_css\Controller\Api\V1\CustomCssController::item'
+  requirements:
+    _permission: 'administer canvas utilities custom css'
+    theme: '[a-z][a-z0-9_]*'
+  methods: [GET]
+  options:
+    _format: 'json'
+
+canvas_utilities_custom_css.api.v1.save:
+  path: '/canvas-utilities/api/v1/custom-css/{theme}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_custom_css\Controller\Api\V1\CustomCssController::save'
+  requirements:
+    _permission: 'administer canvas utilities custom css'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+  methods: [PUT]
+  options:
+    _format: 'json'
+
+canvas_utilities_custom_css.stylesheet:
+  path: '/canvas-utilities/styles/custom-css/{theme}/{fingerprint}.css'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_custom_css\Controller\StylesheetController::build'
+  requirements:
+    _access: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    fingerprint: '[a-f0-9]{12}'
+  methods: [GET]

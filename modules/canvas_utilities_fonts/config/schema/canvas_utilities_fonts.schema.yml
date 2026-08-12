@@ -1,0 +1,26 @@
+canvas_utilities_fonts.font.*:
+  type: config_entity
+  label: 'Canvas Utilities font family'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    id: { type: machine_name, label: 'ID' }
+    label: { type: required_label, label: 'Label' }
+    uuid: { type: uuid, label: 'UUID' }
+    status: { type: boolean, label: 'Enabled' }
+    theme: { type: machine_name, label: 'Theme' }
+    family: { type: string, label: 'CSS family' }
+    fallbacks: { type: string, label: 'Fallback families' }
+    provider: { type: string, label: 'Provider ID' }
+    remote_url: { type: uri, label: 'Remote stylesheet URL' }
+    faces:
+      type: sequence
+      label: 'Local font faces'
+      sequence:
+        type: mapping
+        mapping:
+          file_uuid: { type: uuid, label: 'File UUID' }
+          uri: { type: string, label: 'File URI' }
+          format: { type: string, label: 'Font format' }
+          weight: { type: string, label: 'Font weight' }
+          style: { type: string, label: 'Font style' }

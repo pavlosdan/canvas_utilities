@@ -1,0 +1,15 @@
+services:
+  Drupal\canvas_utilities_fonts\Controller\Api\V1\FontController:
+    public: true
+    arguments:
+      - '@entity_type.manager'
+      - '@file.upload_handler'
+      - '@file_system'
+      - '@file.repository'
+      - '@file.usage'
+
+  Drupal\canvas_utilities_fonts\Controller\FontAssetController:
+    public: true
+    arguments:
+      - '@entity_type.manager'
+      - '@file_url_generator'

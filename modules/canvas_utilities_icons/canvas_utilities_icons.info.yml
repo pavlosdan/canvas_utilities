@@ -1,0 +1,10 @@
+name: Canvas Utilities Icons
+type: module
+description: 'Provides sanitized SVG icon libraries inside Canvas.'
+package: Canvas Utilities
+core_version_requirement: ^11.3
+php: 8.3
+dependencies:
+  - canvas_utilities:canvas_utilities
+  - drupal:file
+

@@ -1,0 +1,10 @@
+{
+  "$defs": {
+    "icon": {
+      "title": "Icon",
+      "description": "A stable SVG URL selected from a Canvas Utilities icon library.",
+      "type": "string",
+      "x-canvas-utilities-picker": "icon"
+    }
+  }
+}

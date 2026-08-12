@@ -1,0 +1,9 @@
+canvas_utilities_design_system:
+  name: Design system
+  description: Manage the site's visual language.
+  url: ui/dist/index.html
+  icon: assets/design-system.svg
+  type: page
+  api_version: "1.0"
+  permissions:
+    - access canvas utilities
