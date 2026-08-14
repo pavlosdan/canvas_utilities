@@ -21,6 +21,32 @@ canvas_utilities_icons.api.v1.import:
   options:
     _format: 'json'
 
+canvas_utilities_icons.api.v1.add_icons:
+  path: '/canvas-utilities/api/v1/icons/{theme}/{library}/icons'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_icons\Controller\Api\V1\IconController::addIcons'
+  requirements:
+    _permission: 'administer canvas utilities icons'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    library: '[a-z][a-z0-9_-]*'
+  methods: [POST]
+  options:
+    _format: 'json'
+
+canvas_utilities_icons.api.v1.update:
+  path: '/canvas-utilities/api/v1/icons/{theme}/{library}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_icons\Controller\Api\V1\IconController::update'
+  requirements:
+    _permission: 'administer canvas utilities icons'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    library: '[a-z][a-z0-9_-]*'
+  methods: [PATCH]
+  options:
+    _format: 'json'
+
 canvas_utilities_icons.api.v1.delete:
   path: '/canvas-utilities/api/v1/icons/{theme}/{library}'
   defaults:
@@ -30,6 +56,20 @@ canvas_utilities_icons.api.v1.delete:
     _csrf_request_header_token: 'TRUE'
     theme: '[a-z][a-z0-9_]*'
     library: '[a-z][a-z0-9_-]*'
+  methods: [DELETE]
+  options:
+    _format: 'json'
+
+canvas_utilities_icons.api.v1.delete_icon:
+  path: '/canvas-utilities/api/v1/icons/{theme}/{library}/icons/{icon}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_icons\Controller\Api\V1\IconController::deleteIcon'
+  requirements:
+    _permission: 'administer canvas utilities icons'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    library: '[a-z][a-z0-9_-]*'
+    icon: '[a-z0-9][a-z0-9_-]*'
   methods: [DELETE]
   options:
     _format: 'json'

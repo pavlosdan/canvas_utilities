@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Badge, Box, Button, Callout, Card, Dialog, Flex, Heading, Select, Text, TextField } from '@radix-ui/themes';
 import { ExclamationTriangleIcon, GlobeIcon, PlusIcon, UploadIcon } from '@radix-ui/react-icons';
 
+import ConfirmButton from './ConfirmButton';
 import { createRemoteFont, deleteFont, getFonts, uploadFont } from '../font-api';
 import type { FontFamily } from '../font-api';
 
@@ -24,7 +25,7 @@ export default function FontWorkspace({ theme, csrfToken }: { theme: string; csr
       <Callout.Root color="amber" mt="5"><Callout.Icon><GlobeIcon /></Callout.Icon><Callout.Text>Remote fonts send visitor network information to their provider. Confirm privacy and CSP requirements before use.</Callout.Text></Callout.Root>
       {error && <Callout.Root color="red" role="alert" mt="4"><Callout.Icon><ExclamationTriangleIcon /></Callout.Icon><Callout.Text>{error}</Callout.Text></Callout.Root>}
       <div className="font-grid">
-        {fonts.map((font) => <Card key={font.id} className="font-card"><Flex justify="between"><Heading size="5">{font.label}</Heading><Flex gap="2" align="center"><Badge color={font.provider === 'local_file' ? 'green' : 'blue'}>{font.provider === 'local_file' ? 'Self-hosted' : 'Remote CSS'}</Badge><Button size="1" color="red" variant="ghost" onClick={async () => { if (window.confirm(`Delete ${font.label}?`)) { try { await deleteFont(theme, font.id, csrfToken); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Delete failed.'); } } }}>Delete</Button></Flex></Flex><Text as="p" mt="5" size="7" style={{ fontFamily: `'${font.family}', ${font.fallbacks}` }}>Aa</Text><Text as="p" mt="2" color="gray">{font.family}, {font.fallbacks}</Text></Card>)}
+        {fonts.map((font) => <Card key={font.id} className="font-card"><Flex justify="between"><Heading size="5">{font.label}</Heading><Flex gap="2" align="center"><Badge color={font.provider === 'local_file' ? 'green' : 'blue'}>{font.provider === 'local_file' ? 'Self-hosted' : 'Remote CSS'}</Badge><ConfirmButton size="1" color="red" variant="ghost" title={`Delete ${font.label}?`} description={font.provider === 'local_file' ? 'The font family is removed and its uploaded files are deleted. Text styled with it falls back to the next family in the stack.' : 'The font family is removed and its remote stylesheet is no longer linked. Text styled with it falls back to the next family in the stack.'} onConfirm={async () => { setError(null); try { await deleteFont(theme, font.id, csrfToken); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Delete failed.'); } }}>Delete</ConfirmButton></Flex></Flex><Text as="p" mt="5" size="7" style={{ fontFamily: `'${font.family}', ${font.fallbacks}` }}>Aa</Text><Text as="p" mt="2" color="gray">{font.family}, {font.fallbacks}</Text></Card>)}
         {fonts.length === 0 && <Card className="empty-card"><Heading size="4">No fonts yet</Heading><Text as="p" color="gray" mt="2">Add a self-hosted face or an approved remote stylesheet.</Text></Card>}
       </div>
     </section>

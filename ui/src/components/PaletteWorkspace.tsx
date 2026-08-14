@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Box, Button, Callout, Card, Dialog, Flex, Heading, Text, TextField } from '@radix-ui/themes';
 import { ExclamationTriangleIcon, PlusIcon } from '@radix-ui/react-icons';
 
+import ConfirmButton from './ConfirmButton';
 import { createPalette, deletePalette, getPalettes } from '../palette-api';
 import type { Palette, PaletteColor } from '../palette-api';
 
@@ -37,7 +38,7 @@ export default function PaletteWorkspace({ theme, csrfToken }: { theme: string; 
       <div className="palette-grid">
         {palettes.map((palette) => (
           <Card key={palette.id} className="palette-card">
-            <Flex justify="between" align="center" gap="3"><Heading size="4">{palette.label}</Heading><Button size="1" variant="ghost" color="red" onClick={async () => { if (window.confirm(`Delete ${palette.label}?`)) { try { await deletePalette(theme, palette.id, csrfToken); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Delete failed.'); } } }}>Delete</Button></Flex>
+            <Flex justify="between" align="center" gap="3"><Heading size="4">{palette.label}</Heading><ConfirmButton size="1" variant="ghost" color="red" title={`Delete ${palette.label}?`} description={`The palette is removed along with the --${palette.prefix}-… custom properties it publishes. Anything styled with those variables loses them.`} onConfirm={async () => { setError(null); try { await deletePalette(theme, palette.id, csrfToken); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Delete failed.'); } }}>Delete</ConfirmButton></Flex>
             <Text as="p" size="2" color="gray">{palette.description || `CSS prefix: --${palette.prefix}-…`}</Text>
             <div className="swatch-row">
               {palette.colors.map((color) => <div key={color.id} className="swatch" title={`${color.label}: ${color.value}`} style={{ backgroundColor: color.value }}><span>{color.label}</span></div>)}

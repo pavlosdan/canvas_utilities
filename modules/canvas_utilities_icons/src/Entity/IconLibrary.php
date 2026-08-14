@@ -64,6 +64,23 @@ final class IconLibrary extends ConfigEntityBase {
   }
 
   /**
+   * Returns the source provider plugin ID. */
+  public function getProvider(): string {
+    return $this->provider;
+  }
+
+  /**
+   * Returns the library ID without its theme prefix.
+   *
+   * This is the namespace applied to internal SVG IDs at import time, so later
+   * uploads must reuse it to stay consistent with already-stored icons.
+   */
+  public function getShortId(): string {
+    $prefix = $this->theme . '__';
+    return str_starts_with($this->id, $prefix) ? substr($this->id, strlen($prefix)) : $this->id;
+  }
+
+  /**
    * Returns icon metadata.
    *
    * @return array<string, array{id: string, label: string, group: string, uri: string, file_uuid: string, viewBox: string, hash: string}>

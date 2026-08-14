@@ -53,15 +53,100 @@ final class IconController {
   }
 
   /**
+   * Adds icons from a new upload to an existing library. */
+  public function addIcons(Request $request, string $theme, string $library): JsonResponse {
+    $entity = $this->loadLibrary($theme, $library);
+    if (!$entity instanceof IconLibrary) {
+      return $this->notFound();
+    }
+    try {
+      $value = $request->files->get('source');
+      $files = is_array($value) ? $value : ($value instanceof UploadedFile ? [$value] : []);
+      if ($files === []) {
+        return new JsonResponse(['error' => ['code' => 'validation_failed', 'message' => 'Choose at least one source file.']], 422);
+      }
+      $provider = (string) ($request->request->get('provider') ?: $entity->getProvider());
+      $report = $this->importer->addIcons($entity, $provider, $files);
+      return new JsonResponse(['data' => $this->clientData($entity), 'meta' => $report]);
+    }
+    catch (\InvalidArgumentException $exception) {
+      return new JsonResponse(['error' => ['code' => 'validation_failed', 'message' => $exception->getMessage()]], 422);
+    }
+  }
+
+  /**
+   * Updates the editable metadata of a library. */
+  public function update(Request $request, string $theme, string $library): JsonResponse {
+    $entity = $this->loadLibrary($theme, $library);
+    if (!$entity instanceof IconLibrary) {
+      return $this->notFound();
+    }
+    try {
+      $data = json_decode($request->getContent(), TRUE, flags: JSON_THROW_ON_ERROR);
+      if (!is_array($data)) {
+        return new JsonResponse(['error' => ['code' => 'invalid_request', 'message' => 'The request body must be an object.']], 400);
+      }
+      if (array_key_exists('label', $data)) {
+        $label = trim((string) $data['label']);
+        if ($label === '') {
+          return new JsonResponse(['error' => ['code' => 'validation_failed', 'message' => 'The library name cannot be empty.']], 422);
+        }
+        $entity->set('label', $label);
+      }
+      foreach (['license', 'source'] as $key) {
+        if (array_key_exists($key, $data)) {
+          $entity->set($key, trim((string) $data[$key]));
+        }
+      }
+      if (array_key_exists('status', $data)) {
+        $entity->setStatus((bool) $data['status']);
+      }
+      $entity->save();
+      return new JsonResponse(['data' => $this->clientData($entity)]);
+    }
+    catch (\JsonException $exception) {
+      return new JsonResponse(['error' => ['code' => 'invalid_request', 'message' => $exception->getMessage()]], 400);
+    }
+  }
+
+  /**
    * Deletes a library and its managed files. */
   public function delete(string $theme, string $library): JsonResponse {
-    $storage = $this->entityTypeManager->getStorage('canvas_utilities_icon_lib');
-    $entity = $storage->load($library);
-    if (!$entity instanceof IconLibrary || $entity->getTheme() !== $theme) {
-      return new JsonResponse(['error' => ['code' => 'not_found', 'message' => 'The icon library does not exist.']], 404);
+    $entity = $this->loadLibrary($theme, $library);
+    if (!$entity instanceof IconLibrary) {
+      return $this->notFound();
     }
     $entity->delete();
     return new JsonResponse(NULL, 204);
+  }
+
+  /**
+   * Deletes a single icon from a library. */
+  public function deleteIcon(string $theme, string $library, string $icon): JsonResponse {
+    $entity = $this->loadLibrary($theme, $library);
+    if (!$entity instanceof IconLibrary) {
+      return $this->notFound();
+    }
+    try {
+      $this->importer->removeIcon($entity, $icon);
+    }
+    catch (\InvalidArgumentException $exception) {
+      return new JsonResponse(['error' => ['code' => 'not_found', 'message' => $exception->getMessage()]], 404);
+    }
+    return new JsonResponse(['data' => $this->clientData($entity)]);
+  }
+
+  /**
+   * Loads a library that belongs to the requested theme. */
+  private function loadLibrary(string $theme, string $library): ?IconLibrary {
+    $entity = $this->entityTypeManager->getStorage('canvas_utilities_icon_lib')->load($library);
+    return $entity instanceof IconLibrary && $entity->getTheme() === $theme ? $entity : NULL;
+  }
+
+  /**
+   * Builds the shared missing-library response. */
+  private function notFound(): JsonResponse {
+    return new JsonResponse(['error' => ['code' => 'not_found', 'message' => 'The icon library does not exist.']], 404);
   }
 
   /**
