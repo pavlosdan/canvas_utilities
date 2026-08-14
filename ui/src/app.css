@@ -157,6 +157,46 @@ select {
   padding: 24px;
 }
 
+.style-group__summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Replaced by the chevron below; `display` alone hides it in WebKit. */
+  list-style: none;
+  cursor: pointer;
+}
+
+.style-group__summary::-webkit-details-marker {
+  display: none;
+}
+
+.style-group__summary:focus-visible {
+  border-radius: var(--radius-2);
+  outline: 2px solid var(--accent-8);
+  outline-offset: 4px;
+}
+
+.style-group__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.style-group__chevron {
+  flex-shrink: 0;
+  color: var(--gray-10);
+  transition: transform 120ms ease-in-out;
+}
+
+.style-group[open] .style-group__chevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .style-group__chevron {
+    transition: none;
+  }
+}
+
 .control-fieldset {
   min-width: 0;
   padding: 0;
