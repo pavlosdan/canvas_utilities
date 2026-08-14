@@ -6,6 +6,34 @@ import ConfirmButton from './ConfirmButton';
 import { addIconsToLibrary, deleteIcon, deleteIconLibrary, getIconLibraries, getIconUsage, importIconLibrary, updateIconLibrary } from '../icon-api';
 import type { IconLibrary, IconUsageRecord } from '../icon-api';
 
+interface UsageLocation extends IconUsageRecord {
+  /** How many of the icons being deleted this location uses. */
+  iconCount: number;
+}
+
+/**
+ * Collapses per-icon references into one entry per place.
+ *
+ * The API reports references per icon, which is what the single-icon dialog
+ * needs. Deleting a whole library asks a different question — which places are
+ * affected — and a page using several icons from that library would otherwise
+ * be listed once per icon.
+ */
+function toLocations(icons: Record<string, IconUsageRecord[]>): UsageLocation[] {
+  const byLocation = new Map<string, UsageLocation>();
+  Object.values(icons).forEach((records) => {
+    records.forEach((record) => {
+      const existing = byLocation.get(record.id);
+      if (existing) {
+        existing.iconCount += 1;
+        return;
+      }
+      byLocation.set(record.id, { ...record, iconCount: 1 });
+    });
+  });
+  return [...byLocation.values()];
+}
+
 /**
  * Renders where something is used, or says nothing found.
  *
@@ -13,20 +41,22 @@ import type { IconLibrary, IconUsageRecord } from '../icon-api';
  * CSS, so "no usage found" is phrased as a negative result rather than a
  * guarantee that deleting is safe.
  */
-function UsageDetails({ records, subject }: { records: IconUsageRecord[]; subject: string }) {
-  if (records.length === 0) {
+function UsageDetails({ locations, subject }: { locations: UsageLocation[]; subject: string }) {
+  if (locations.length === 0) {
     return <Callout.Root color="gray" mt="3">
       <Callout.Text size="2">No usage found. A URL written directly into component code cannot be detected, so check there too.</Callout.Text>
     </Callout.Root>;
   }
-  const shown = records.slice(0, 8);
+  const shown = locations.slice(0, 8);
   return <Callout.Root color="amber" mt="3">
     <Callout.Icon><ExclamationTriangleIcon /></Callout.Icon>
     <Callout.Text size="2">
-      <strong>{subject} still in use in {records.length} place{records.length === 1 ? '' : 's'}.</strong> Deleting will leave {records.length === 1 ? 'it' : 'them'} without an icon.
+      <strong>{subject} still in use in {locations.length} place{locations.length === 1 ? '' : 's'}.</strong> Deleting will leave {locations.length === 1 ? 'it' : 'them'} without an icon.
       <ul className="usage-list">
-        {shown.map((record) => <li key={record.id}>{record.label} <Text color="gray">({record.type})</Text></li>)}
-        {records.length > shown.length && <li><Text color="gray">and {records.length - shown.length} more…</Text></li>}
+        {shown.map((location) => <li key={location.id}>
+          {location.label} <Text color="gray">({location.type}{location.iconCount > 1 ? `, ${location.iconCount} icons` : ''})</Text>
+        </li>)}
+        {locations.length > shown.length && <li><Text color="gray">and {locations.length - shown.length} more…</Text></li>}
       </ul>
     </Callout.Text>
   </Callout.Root>;
@@ -96,8 +126,7 @@ export default function IconWorkspace({ theme, csrfToken }: { theme: string; csr
               description="The library and its sanitized SVG files are removed."
               loadDetails={async () => {
                 const report = await getIconUsage(theme, library.id);
-                const records = Object.values(report.icons).flat();
-                return <UsageDetails records={records} subject="These icons are" />;
+                return <UsageDetails locations={toLocations(report.icons)} subject="These icons are" />;
               }}
               onConfirm={() => run(() => deleteIconLibrary(theme, library.id, csrfToken), 'Delete failed.')}
             >Delete</ConfirmButton>
@@ -115,7 +144,10 @@ export default function IconWorkspace({ theme, csrfToken }: { theme: string; csr
             description={`The icon is removed from ${library.label} and its file is deleted.`}
             loadDetails={async () => {
               const report = await getIconUsage(theme, library.id);
-              return <UsageDetails records={report.icons[icon.id] ?? []} subject="This icon is" />;
+              return <UsageDetails
+                locations={toLocations({ [icon.id]: report.icons[icon.id] ?? [] })}
+                subject="This icon is"
+              />;
             }}
             confirmLabel="Remove"
             onConfirm={() => run(() => deleteIcon(theme, library.id, icon.id, csrfToken), 'Unable to remove the icon.')}
