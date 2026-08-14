@@ -110,8 +110,30 @@ final class IconLibrary extends ConfigEntityBase {
       'license' => $this->license,
       'source' => $this->source,
       'status' => $this->status(),
-      'icons' => array_values($this->icons),
+      'icons' => $this->sortedIcons(),
     ];
+  }
+
+  /**
+   * Returns the icons in the order they should be presented.
+   *
+   * Icons are stored in the order they were imported, which for an incremental
+   * library reflects nothing more than the sequence of uploads. Sorting by
+   * label here keeps every consumer in agreement, matching what the Canvas
+   * icon picker already does.
+   *
+   * The comparison is natural and case-insensitive, so "arrow-2" precedes
+   * "arrow-10" rather than following it.
+   *
+   * @return list<array{id: string, label: string, group: string, uri: string, file_uuid: string, viewBox: string, hash: string}>
+   *   Icons ordered by label.
+   *
+   * @see \Drupal\canvas_utilities_icons\IconPickerOptions::forTheme()
+   */
+  private function sortedIcons(): array {
+    $icons = array_values($this->icons);
+    usort($icons, static fn (array $first, array $second): int => strnatcasecmp($first['label'], $second['label']));
+    return $icons;
   }
 
 }

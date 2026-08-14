@@ -130,6 +130,37 @@ final class IconLibraryEditingTest extends CanvasKernelTestBase {
   }
 
   /**
+   * Tests that icons are presented in label order, not upload order.
+   *
+   * A library built up over several uploads would otherwise list its icons in
+   * the arbitrary sequence they happened to be added.
+   */
+  public function testIconsArePresentedAlphabetically(): void {
+    $library = $this->importer->import('stark', 'individual_svg', [
+      $this->upload('zebra.svg', $this->svg('M12 2 L22 22 L2 22 Z')),
+      $this->upload('arrow-10.svg', $this->svg('M1 1 L2 2 L3 3 Z')),
+      $this->upload('Apple.svg', $this->svg('M4 4 L5 5 L6 6 Z')),
+      $this->upload('arrow-2.svg', $this->svg('M7 7 L8 8 L9 9 Z')),
+    ], ['id' => 'brand', 'label' => 'Brand']);
+
+    // Natural, case-insensitive ordering: "arrow-2" precedes "arrow-10", and
+    // capitalization does not float an icon to the front.
+    self::assertSame(
+      ['Apple', 'arrow-2', 'arrow-10', 'zebra'],
+      array_column($library->toClientArray()['icons'], 'label'),
+    );
+
+    // An icon added later takes its place in the order rather than the end.
+    $this->importer->addIcons($library, 'individual_svg', [
+      $this->upload('banana.svg', $this->svg('M10 10 L11 11 L12 12 Z')),
+    ]);
+    self::assertSame(
+      ['Apple', 'arrow-2', 'arrow-10', 'banana', 'zebra'],
+      array_column($this->reload($library)->toClientArray()['icons'], 'label'),
+    );
+  }
+
+  /**
    * Builds an uploaded SVG file.
    */
   private function upload(string $filename, string $contents): UploadedFile {
