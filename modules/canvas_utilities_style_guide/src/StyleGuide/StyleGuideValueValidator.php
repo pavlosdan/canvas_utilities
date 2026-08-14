@@ -227,6 +227,9 @@ final class StyleGuideValueValidator {
    * Resolves a validated palette reference.
    */
   private function resolvePaletteColor(string $reference): string {
+    if (!$this->entityTypeManager->hasDefinition('canvas_utilities_palette')) {
+      return '';
+    }
     [$palette_id, $color_id] = array_pad(explode(':', $reference, 2), 2, '');
     $entity = $this->entityTypeManager->getStorage('canvas_utilities_palette')->load($palette_id);
     $colors = $entity instanceof ConfigEntityInterface ? $entity->get('colors') : NULL;
@@ -247,6 +250,9 @@ final class StyleGuideValueValidator {
    * Resolves a validated font reference.
    */
   private function resolveFontFamily(string $reference): string {
+    if (!$this->entityTypeManager->hasDefinition('canvas_utilities_font')) {
+      return '';
+    }
     $entity = $this->entityTypeManager->getStorage('canvas_utilities_font')->load($reference);
     if (!$entity instanceof ConfigEntityInterface) {
       return '';
