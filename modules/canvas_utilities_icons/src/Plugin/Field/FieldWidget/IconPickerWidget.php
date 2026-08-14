@@ -6,6 +6,7 @@ namespace Drupal\canvas_utilities_icons\Plugin\Field\FieldWidget;
 
 use Drupal\canvas_utilities_icons\Canvas\IconPropContract;
 use Drupal\canvas_utilities_icons\IconPickerOptions;
+use Drupal\Component\Serialization\Json;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Field\Attribute\FieldWidget;
 use Drupal\Core\Field\FieldDefinitionInterface;
@@ -132,18 +133,21 @@ final class IconPickerWidget extends WidgetBase implements ContainerFactoryPlugi
         'autocomplete' => 'off',
         'readonly' => 'readonly',
         'data-canvas-utilities-theme' => $theme,
+        // The available icons travel on the element itself rather than in
+        // drupalSettings. Drupal merges the settings of an AJAX response into
+        // the existing drupalSettings with a recursive merge, which combines
+        // arrays index by index instead of replacing them. A list that has
+        // grown shorter therefore keeps its removed entries: after deleting a
+        // library, its icons stayed selectable until the page was fully
+        // reloaded, because no amount of server-side cache clearing can
+        // correct state already merged into the browser.
+        // @see Drupal.AjaxCommands.prototype.settings in core/misc/ajax.js
+        'data-canvas-utilities-icon-libraries' => Json::encode($libraries),
       ],
       '#element_validate' => [[self::class, 'validateIcon']],
       '#canvas_utilities_allowed_values' => $allowed_values,
       '#attached' => [
         'library' => ['canvas_utilities_icons/canvas_picker'],
-        'drupalSettings' => [
-          'canvasUtilitiesIcons' => [
-            'themes' => [
-              $theme => $libraries,
-            ],
-          ],
-        ],
       ],
     ];
     $element['#cache']['tags'][] = 'canvas_utilities_icon_lib_list';

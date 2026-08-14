@@ -1,4 +1,4 @@
-(function iconPickerBehavior(Drupal, once, drupalSettings) {
+(function iconPickerBehavior(Drupal, once) {
   Drupal.behaviors.canvasUtilitiesIconPicker = {
     attach(context) {
       once(
@@ -7,11 +7,20 @@
         context,
       ).forEach((input) => {
         const theme = input.dataset.canvasUtilitiesTheme;
-        const libraries =
-          drupalSettings.canvasUtilitiesIcons?.themes?.[theme] || [];
-        const icons = libraries.flatMap((library) =>
-          library.icons.map((icon) => ({ ...icon, library: library.label })),
-        );
+
+        // The libraries rendered with the element are the starting point. They
+        // deliberately do not come from drupalSettings: Drupal merges the
+        // settings of every AJAX response into the existing ones recursively,
+        // so a list that has grown shorter keeps its removed entries.
+        let libraries = [];
+        try {
+          libraries = JSON.parse(
+            input.dataset.canvasUtilitiesIconLibraries || '[]',
+          );
+        } catch (error) {
+          libraries = [];
+        }
+        let icons = [];
 
         const picker = document.createElement('div');
         picker.className = 'canvas-utilities-icon-picker';
@@ -51,13 +60,70 @@
         allLibraries.value = '';
         allLibraries.textContent = 'All libraries';
         librarySelect.append(allLibraries);
-        libraries.forEach((library) => {
-          const option = document.createElement('option');
-          option.value = library.label;
-          option.textContent = library.label;
-          librarySelect.append(option);
-        });
         filters.append(search, librarySelect);
+
+        const applyLibraries = (list) => {
+          libraries = list;
+          icons = libraries.flatMap((library) =>
+            library.icons.map((icon) => ({ ...icon, library: library.label })),
+          );
+          const previous = librarySelect.value;
+          librarySelect.replaceChildren(allLibraries);
+          libraries.forEach((library) => {
+            const option = document.createElement('option');
+            option.value = library.label;
+            option.textContent = library.label;
+            librarySelect.append(option);
+          });
+          librarySelect.value = libraries.some((l) => l.label === previous)
+            ? previous
+            : '';
+        };
+
+        // Canvas keeps a component's settings form in its own client-side
+        // cache, so the markup rendered here can outlive changes made in the
+        // Design system: a library deleted afterwards would still be offered
+        // until the whole page was reloaded. Re-reading the libraries as the
+        // picker opens keeps the choices current. If the request fails, for
+        // example because the account cannot read the API, the options
+        // rendered with the element are kept.
+        const refreshLibraries = async () => {
+          if (!theme) {
+            return;
+          }
+          try {
+            const response = await fetch(
+              `/canvas-utilities/api/v1/icons/${encodeURIComponent(theme)}`,
+              {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+              },
+            );
+            if (!response.ok) {
+              return;
+            }
+            const { data } = await response.json();
+            if (!Array.isArray(data)) {
+              return;
+            }
+            applyLibraries(
+              data
+                .filter((library) => library.status)
+                .map((library) => ({
+                  id: library.id,
+                  label: library.label,
+                  icons: (library.icons || []).map((icon) => ({
+                    id: icon.id,
+                    label: icon.label,
+                    group: icon.group,
+                    value: icon.url,
+                  })),
+                })),
+            );
+          } catch (error) {
+            // Keep the options that were rendered with the element.
+          }
+        };
 
         const results = document.createElement('div');
         results.className = 'canvas-utilities-icon-picker__results';
@@ -104,10 +170,13 @@
 
         dialog.append(header, filters, status, results);
         picker.append(trigger, dialog);
-        trigger.addEventListener('click', () => {
+        trigger.addEventListener('click', async () => {
           renderResults();
           dialog.showModal();
           search.focus();
+          await refreshLibraries();
+          renderResults();
+          updateCurrent();
         });
         close.addEventListener('click', () => dialog.close());
         dialog.addEventListener('click', (event) => {
@@ -136,6 +205,7 @@
           }
         };
 
+        applyLibraries(libraries);
         const insertionPoint = input.parentElement || input;
         insertionPoint.before(picker);
         input.addEventListener('change', updateCurrent);
@@ -143,4 +213,4 @@
       });
     },
   };
-})(Drupal, once, drupalSettings);
+})(Drupal, once);

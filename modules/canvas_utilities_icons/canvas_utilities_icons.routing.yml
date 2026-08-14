@@ -21,6 +21,18 @@ canvas_utilities_icons.api.v1.import:
   options:
     _format: 'json'
 
+canvas_utilities_icons.api.v1.usage:
+  path: '/canvas-utilities/api/v1/icons/{theme}/{library}/usage'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_icons\Controller\Api\V1\IconController::usage'
+  requirements:
+    _permission: 'access canvas utilities'
+    theme: '[a-z][a-z0-9_]*'
+    library: '[a-z][a-z0-9_-]*'
+  methods: [GET]
+  options:
+    _format: 'json'
+
 canvas_utilities_icons.api.v1.add_icons:
   path: '/canvas-utilities/api/v1/icons/{theme}/{library}/icons'
   defaults:

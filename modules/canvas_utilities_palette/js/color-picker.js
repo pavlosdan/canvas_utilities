@@ -1,4 +1,4 @@
-(function colorPickerBehavior(Drupal, once, drupalSettings) {
+(function colorPickerBehavior(Drupal, once) {
   Drupal.behaviors.canvasUtilitiesColorPicker = {
     attach(context) {
       once(
@@ -7,8 +7,17 @@
         context,
       ).forEach((input) => {
         const theme = input.dataset.canvasUtilitiesTheme;
-        const colors =
-          drupalSettings.canvasUtilitiesPalette?.themes?.[theme] || [];
+
+        // Read the palettes from the element itself. They deliberately do not
+        // come from drupalSettings: Drupal recursively merges the settings of
+        // every AJAX response into the existing ones, so a list that has grown
+        // shorter keeps its removed entries until a full page reload.
+        let colors = [];
+        try {
+          colors = JSON.parse(input.dataset.canvasUtilitiesPalettes || '[]');
+        } catch (error) {
+          colors = [];
+        }
         const allowCustom =
           input.dataset.canvasUtilitiesAllowCustom === 'true';
         const picker = document.createElement('div');
@@ -33,47 +42,109 @@
         panel.className = 'canvas-utilities-color-picker__panel';
         panel.hidden = true;
 
-        const grouped = new Map();
-        colors.forEach((color) => {
-          const paletteColors = grouped.get(color.palette) || [];
-          paletteColors.push(color);
-          grouped.set(color.palette, paletteColors);
-        });
-        if (colors.length === 0) {
-          const empty = document.createElement('p');
-          empty.className = 'canvas-utilities-color-picker__empty';
-          empty.textContent = 'No palette colors are available for this theme.';
-          panel.append(empty);
-        }
-        grouped.forEach((paletteColors, palette) => {
-          const group = document.createElement('section');
-          const heading = document.createElement('h4');
-          heading.textContent = palette;
-          const grid = document.createElement('div');
-          grid.className = 'canvas-utilities-color-picker__grid';
-          paletteColors.forEach((color) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'canvas-utilities-color-picker__swatch';
-            button.dataset.value = color.value;
-            button.title = `${color.label} — ${color.preview}`;
-            button.setAttribute('aria-label', `${color.label}, ${color.preview}`);
-            button.style.setProperty('--canvas-utilities-swatch', color.preview);
-            button.addEventListener('click', () => {
-              input.value = color.value;
-              panel.hidden = true;
-              trigger.setAttribute('aria-expanded', 'false');
-              updateCurrent();
-            });
-            grid.append(button);
+        // Rebuilt on every open so the panel reflects the palettes that exist
+        // now, not the ones that existed when this form was rendered.
+        const renderPanel = () => {
+          panel.replaceChildren();
+          const grouped = new Map();
+          colors.forEach((color) => {
+            const paletteColors = grouped.get(color.palette) || [];
+            paletteColors.push(color);
+            grouped.set(color.palette, paletteColors);
           });
-          group.append(heading, grid);
-          panel.append(group);
-        });
+          if (colors.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'canvas-utilities-color-picker__empty';
+            empty.textContent =
+              'No palette colors are available for this theme.';
+            panel.append(empty);
+          }
+          grouped.forEach((paletteColors, palette) => {
+            const group = document.createElement('section');
+            const heading = document.createElement('h4');
+            heading.textContent = palette;
+            const grid = document.createElement('div');
+            grid.className = 'canvas-utilities-color-picker__grid';
+            paletteColors.forEach((color) => {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'canvas-utilities-color-picker__swatch';
+              button.dataset.value = color.value;
+              button.title = `${color.label} — ${color.preview}`;
+              button.setAttribute(
+                'aria-label',
+                `${color.label}, ${color.preview}`,
+              );
+              button.style.setProperty(
+                '--canvas-utilities-swatch',
+                color.preview,
+              );
+              button.addEventListener('click', () => {
+                input.value = color.value;
+                panel.hidden = true;
+                trigger.setAttribute('aria-expanded', 'false');
+                updateCurrent();
+              });
+              grid.append(button);
+            });
+            group.append(heading, grid);
+            panel.append(group);
+          });
+        };
 
-        trigger.addEventListener('click', () => {
+        // Canvas keeps a component's settings form in its own client-side
+        // cache, so this markup can outlive changes made in the Design system:
+        // a palette deleted afterwards would still be offered until the whole
+        // page was reloaded. If the request fails, for example because the
+        // account cannot read the API, the colors rendered with the element
+        // are kept.
+        const refreshColors = async () => {
+          if (!theme) {
+            return;
+          }
+          try {
+            const response = await fetch(
+              `/canvas-utilities/api/v1/palettes/${encodeURIComponent(theme)}`,
+              {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+              },
+            );
+            if (!response.ok) {
+              return;
+            }
+            const { data } = await response.json();
+            if (!Array.isArray(data)) {
+              return;
+            }
+            colors = data
+              .filter((palette) => palette.status)
+              .sort(
+                (first, second) =>
+                  first.weight - second.weight ||
+                  String(first.label).localeCompare(String(second.label)),
+              )
+              .flatMap((palette) =>
+                (palette.colors || []).map((color) => ({
+                  palette: palette.label,
+                  label: color.label,
+                  value: `var(--${palette.prefix}-${color.id})`,
+                  preview: color.value,
+                })),
+              );
+            renderPanel();
+            updateCurrent();
+          } catch (error) {
+            // Keep the colors that were rendered with the element.
+          }
+        };
+
+        trigger.addEventListener('click', async () => {
           panel.hidden = !panel.hidden;
           trigger.setAttribute('aria-expanded', String(!panel.hidden));
+          if (!panel.hidden) {
+            await refreshColors();
+          }
         });
 
         const updateCurrent = () => {
@@ -115,10 +186,11 @@
           customControl.append(customLabel, customInput);
           insertionPoint.before(customControl);
         }
+        renderPanel();
         input.addEventListener('input', updateCurrent);
         input.addEventListener('change', updateCurrent);
         updateCurrent();
       });
     },
   };
-})(Drupal, once, drupalSettings);
+})(Drupal, once);

@@ -6,6 +6,8 @@ namespace Drupal\canvas_utilities_icons\Controller\Api\V1;
 
 use Drupal\canvas_utilities_icons\Entity\IconLibrary;
 use Drupal\canvas_utilities_icons\Import\IconImporter;
+use Drupal\canvas_utilities_icons\Usage\IconUsage;
+use Drupal\canvas_utilities_icons\Usage\IconUsageScope;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -23,7 +25,30 @@ final class IconController {
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly IconImporter $importer,
     private readonly FileUrlGeneratorInterface $fileUrlGenerator,
+    private readonly IconUsage $usage,
   ) {}
+
+  /**
+   * Reports where a library's icons are referenced.
+   *
+   * Advisory only: an icon URL written directly into a component's own JS or
+   * CSS cannot be detected, so callers warn rather than block.
+   */
+  public function usage(Request $request, string $theme, string $library): JsonResponse {
+    $entity = $this->loadLibrary($theme, $library);
+    if (!$entity instanceof IconLibrary) {
+      return $this->notFound();
+    }
+    $scope = $request->query->get('scope') === 'all' ? IconUsageScope::All : IconUsageScope::Active;
+    $icons = $this->usage->forLibrary($entity, $scope);
+    return new JsonResponse([
+      'data' => [
+        'icons' => $icons,
+        'total' => array_sum(array_map('count', $icons)),
+        'scope' => $scope === IconUsageScope::All ? 'all' : 'active',
+      ],
+    ]);
+  }
 
   /**
    * Returns all icon libraries for a theme. */

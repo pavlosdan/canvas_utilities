@@ -7,6 +7,7 @@ namespace Drupal\canvas_utilities_palette\Plugin\Field\FieldWidget;
 use Drupal\canvas_utilities_palette\Canvas\ColorPropContract;
 use Drupal\canvas_utilities_palette\Color\CssColor;
 use Drupal\canvas_utilities_palette\PalettePickerOptions;
+use Drupal\Component\Serialization\Json;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Field\Attribute\FieldWidget;
 use Drupal\Core\Field\FieldDefinitionInterface;
@@ -148,15 +149,14 @@ final class ColorPickerWidget extends WidgetBase implements ContainerFactoryPlug
       '#canvas_utilities_allow_custom' => $allow_custom,
       '#attached' => [
         'library' => ['canvas_utilities_palette/canvas_picker'],
-        'drupalSettings' => [
-          'canvasUtilitiesPalette' => [
-            'themes' => [
-              $theme => $colors,
-            ],
-          ],
-        ],
       ],
     ];
+    // The palettes travel on the element rather than in drupalSettings, which
+    // Drupal merges recursively across AJAX responses: arrays combine index by
+    // index instead of being replaced, so a deleted palette would stay
+    // selectable until the page was fully reloaded.
+    // @see Drupal.AjaxCommands.prototype.settings in core/misc/ajax.js
+    $element['value']['#attributes']['data-canvas-utilities-palettes'] = Json::encode($colors);
     if (!$allow_custom) {
       $element['value']['#attributes']['readonly'] = 'readonly';
     }

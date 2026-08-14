@@ -21,19 +21,46 @@ Libraries are managed in **Design system → Icons** inside Canvas.
 
 Deleting a library or an icon also deletes the managed files behind it.
 
+## Usage checking
+
+Before deleting a library or an icon, the confirmation dialog reports where
+that icon is currently referenced. Four surfaces are searched:
+
+- component trees stored on content entities;
+- config entities that embed component trees (patterns, content templates,
+  page regions);
+- code component prop examples, which can default to an icon;
+- unpublished Canvas auto-save drafts.
+
+By default only the *active* revisions are considered — the published revision
+and the newest draft — matching how Canvas itself audits component usage.
+Pass `?scope=all` to include superseded revisions.
+
+Usage is derived on demand rather than tracked in a table, because an icon
+selection is stored verbatim as its URL inside a component instance's inputs.
+The scan is narrowed by `component_id` first, which is indexed, so only
+components that actually declare an icon-picker prop are examined.
+
+**The result is advisory, and deletion is never blocked.** An icon URL written
+directly into a component's own JavaScript or CSS, or assembled at runtime,
+cannot be detected, so "no usage found" is a negative result rather than a
+guarantee. If the check itself fails, the dialog says so instead of reporting
+the icon as unused.
+
 ### API
 
 | Method | Path |
 | --- | --- |
 | `GET` | `/canvas-utilities/api/v1/icons/{theme}` |
+| `GET` | `/canvas-utilities/api/v1/icons/{theme}/{library}/usage` |
 | `POST` | `/canvas-utilities/api/v1/icons/{theme}/import` |
 | `POST` | `/canvas-utilities/api/v1/icons/{theme}/{library}/icons` |
 | `PATCH` | `/canvas-utilities/api/v1/icons/{theme}/{library}` |
 | `DELETE` | `/canvas-utilities/api/v1/icons/{theme}/{library}` |
 | `DELETE` | `/canvas-utilities/api/v1/icons/{theme}/{library}/icons/{icon}` |
 
-All writes require the `administer canvas utilities icons` permission and a
-`X-CSRF-Token` header.
+Writes require the `administer canvas utilities icons` permission and a
+`X-CSRF-Token` header; reads require `access canvas utilities`.
 
 ## Icon props on code components
 

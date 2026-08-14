@@ -41,6 +41,29 @@ export async function importIconLibrary(theme: string, data: FormData, csrfToken
   }
 }
 
+export interface IconUsageRecord {
+  type: string;
+  label: string;
+  id: string;
+}
+
+export interface IconUsageReport {
+  icons: Record<string, IconUsageRecord[]>;
+  total: number;
+  scope: 'active' | 'all';
+}
+
+export async function getIconUsage(theme: string, library: string, signal?: AbortSignal): Promise<IconUsageReport> {
+  const response = await fetch(
+    `/canvas-utilities/api/v1/icons/${encodeURIComponent(theme)}/${encodeURIComponent(library)}/usage`,
+    { credentials: 'same-origin', headers: { Accept: 'application/json' }, signal },
+  );
+  if (!response.ok) throw new Error('Unable to check icon usage.');
+  const report = ((await response.json()) as { data: IconUsageReport }).data;
+  // An empty PHP map serializes as [], not {}.
+  return { ...report, icons: Array.isArray(report.icons) ? {} : report.icons };
+}
+
 export interface AddIconsReport {
   added: string[];
   replaced: string[];

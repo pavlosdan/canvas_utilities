@@ -3,8 +3,34 @@ import { Badge, Box, Button, Callout, Card, Dialog, Flex, Heading, IconButton, S
 import { ExclamationTriangleIcon, Pencil1Icon, PlusIcon, TrashIcon } from '@radix-ui/react-icons';
 
 import ConfirmButton from './ConfirmButton';
-import { addIconsToLibrary, deleteIcon, deleteIconLibrary, getIconLibraries, importIconLibrary, updateIconLibrary } from '../icon-api';
-import type { IconLibrary } from '../icon-api';
+import { addIconsToLibrary, deleteIcon, deleteIconLibrary, getIconLibraries, getIconUsage, importIconLibrary, updateIconLibrary } from '../icon-api';
+import type { IconLibrary, IconUsageRecord } from '../icon-api';
+
+/**
+ * Renders where something is used, or says nothing found.
+ *
+ * The scan cannot see an icon URL hard-coded inside a component's own JS or
+ * CSS, so "no usage found" is phrased as a negative result rather than a
+ * guarantee that deleting is safe.
+ */
+function UsageDetails({ records, subject }: { records: IconUsageRecord[]; subject: string }) {
+  if (records.length === 0) {
+    return <Callout.Root color="gray" mt="3">
+      <Callout.Text size="2">No usage found. A URL written directly into component code cannot be detected, so check there too.</Callout.Text>
+    </Callout.Root>;
+  }
+  const shown = records.slice(0, 8);
+  return <Callout.Root color="amber" mt="3">
+    <Callout.Icon><ExclamationTriangleIcon /></Callout.Icon>
+    <Callout.Text size="2">
+      <strong>{subject} still in use in {records.length} place{records.length === 1 ? '' : 's'}.</strong> Deleting will leave {records.length === 1 ? 'it' : 'them'} without an icon.
+      <ul className="usage-list">
+        {shown.map((record) => <li key={record.id}>{record.label} <Text color="gray">({record.type})</Text></li>)}
+        {records.length > shown.length && <li><Text color="gray">and {records.length - shown.length} more…</Text></li>}
+      </ul>
+    </Callout.Text>
+  </Callout.Root>;
+}
 
 export default function IconWorkspace({ theme, csrfToken }: { theme: string; csrfToken: string }) {
   const [libraries, setLibraries] = useState<IconLibrary[]>([]);
@@ -67,7 +93,12 @@ export default function IconWorkspace({ theme, csrfToken }: { theme: string; csr
               variant="ghost"
               color="red"
               title={`Delete ${library.label}?`}
-              description="The library and its sanitized SVG files are removed. Components still referencing these icons will lose them."
+              description="The library and its sanitized SVG files are removed."
+              loadDetails={async () => {
+                const report = await getIconUsage(theme, library.id);
+                const records = Object.values(report.icons).flat();
+                return <UsageDetails records={records} subject="These icons are" />;
+              }}
               onConfirm={() => run(() => deleteIconLibrary(theme, library.id, csrfToken), 'Delete failed.')}
             >Delete</ConfirmButton>
           </Flex>
@@ -82,6 +113,10 @@ export default function IconWorkspace({ theme, csrfToken }: { theme: string; csr
             className="icon-item__remove"
             title={`Remove ${icon.label}?`}
             description={`The icon is removed from ${library.label} and its file is deleted.`}
+            loadDetails={async () => {
+              const report = await getIconUsage(theme, library.id);
+              return <UsageDetails records={report.icons[icon.id] ?? []} subject="This icon is" />;
+            }}
             confirmLabel="Remove"
             onConfirm={() => run(() => deleteIcon(theme, library.id, icon.id, csrfToken), 'Unable to remove the icon.')}
           ><TrashIcon /></ConfirmButton>

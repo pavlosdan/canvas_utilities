@@ -332,6 +332,20 @@ select {
   white-space: nowrap;
 }
 
+.usage-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.usage-list li {
+  margin-bottom: 2px;
+}
+
+.confirm-details {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
 .file-input {
   display: block;
   width: 100%;
