@@ -1,8 +1,15 @@
+export type PaletteEntryType = 'color' | 'gradient';
+
 export interface PaletteColor {
   id: string;
   label: string;
   value: string;
   role: string;
+  /**
+   * Solid colors are usable anywhere a CSS color is; gradients are background
+   * images and are therefore not offered to component color props.
+   */
+  type: PaletteEntryType;
 }
 
 export interface Palette {
@@ -36,6 +43,24 @@ export async function createPalette(theme: string, data: Omit<Palette, 'theme' |
   if (!response.ok) {
     const result = (await response.json()) as { error?: { message?: string } };
     throw new Error(result.error?.message ?? 'Unable to create the palette.');
+  }
+}
+
+export async function updatePalette(
+  theme: string,
+  palette: string,
+  changes: { label?: string; description?: string; weight?: number; status?: boolean; colors?: PaletteColor[] },
+  csrfToken: string,
+): Promise<void> {
+  const response = await fetch(`/canvas-utilities/api/v1/palettes/${encodeURIComponent(theme)}/${encodeURIComponent(palette)}`, {
+    method: 'PATCH',
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(changes),
+  });
+  if (!response.ok) {
+    const result = (await response.json()) as { error?: { message?: string } };
+    throw new Error(result.error?.message ?? 'Unable to update the palette.');
   }
 }
 

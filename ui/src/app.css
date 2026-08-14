@@ -250,7 +250,8 @@ select {
 
 .palette-color-row {
   display: grid;
-  grid-template-columns: 42px 1fr 1fr 130px auto;
+  /* type, swatch, label, machine name, value, remove */
+  grid-template-columns: 108px 42px 1fr 1fr 170px auto;
   gap: 8px;
   align-items: center;
 }
@@ -258,6 +259,22 @@ select {
 .palette-color-row input[type="color"] {
   width: 42px;
   height: 34px;
+}
+
+/* Stands in for the color input when the entry is a gradient. */
+.palette-gradient-preview {
+  display: block;
+  width: 42px;
+  height: 34px;
+  border: 1px solid var(--gray-6);
+  border-radius: var(--radius-2);
+  background-position: center;
+  background-size: cover;
+}
+
+/* Gradients need more width than a flat swatch to be recognizable. */
+.swatch--gradient {
+  min-width: 96px;
 }
 
 .font-grid {

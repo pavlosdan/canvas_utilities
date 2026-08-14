@@ -46,3 +46,15 @@ canvas_utilities_palette.palette.*:
           role:
             type: string
             label: 'Semantic role'
+          # Absent on entries stored before gradients were supported, which are
+          # solid colors.
+          # @see \Drupal\canvas_utilities_palette\Entity\Palette::getColors()
+          type:
+            requiredKey: false
+            type: string
+            label: 'Entry type'
+            constraints:
+              Choice:
+                choices:
+                  - color
+                  - gradient

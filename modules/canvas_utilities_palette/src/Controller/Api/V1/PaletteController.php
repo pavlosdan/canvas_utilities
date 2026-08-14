@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\canvas_utilities_palette\Controller\Api\V1;
 
+use Drupal\canvas_utilities_palette\Color\CssGradient;
 use Drupal\canvas_utilities_palette\Entity\Palette;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -65,6 +66,53 @@ final class PaletteController {
   }
 
   /**
+   * Updates an existing palette.
+   *
+   * The ID and CSS prefix are fixed once a palette exists: both appear in the
+   * `var(--prefix-id)` references already stored on component instances and in
+   * theme CSS, so changing them would silently break every use.
+   */
+  public function update(Request $request, string $theme, string $palette): JsonResponse {
+    $entity = $this->entityTypeManager->getStorage('canvas_utilities_palette')->load($palette);
+    if (!$entity instanceof Palette || $entity->getTheme() !== $theme) {
+      return $this->error('not_found', 'The palette does not exist.', 404);
+    }
+    try {
+      $data = json_decode($request->getContent(), TRUE, flags: JSON_THROW_ON_ERROR);
+      if (!is_array($data)) {
+        return $this->error('invalid_request', 'The request body must be an object.', 400);
+      }
+      if (array_key_exists('label', $data)) {
+        $label = trim((string) $data['label']);
+        if ($label === '') {
+          return $this->error('validation_failed', 'The palette name cannot be empty.', 422);
+        }
+        $entity->set('label', $label);
+      }
+      if (array_key_exists('description', $data)) {
+        $entity->set('description', trim((string) $data['description']));
+      }
+      if (array_key_exists('weight', $data)) {
+        $entity->set('weight', (int) $data['weight']);
+      }
+      if (array_key_exists('status', $data)) {
+        $entity->setStatus((bool) $data['status']);
+      }
+      if (array_key_exists('colors', $data)) {
+        $entity->set('colors', $this->validateColors($data['colors']));
+      }
+      $entity->save();
+      return new JsonResponse(['data' => $entity->toClientArray()]);
+    }
+    catch (\JsonException $exception) {
+      return $this->error('invalid_request', $exception->getMessage(), 400);
+    }
+    catch (\InvalidArgumentException $exception) {
+      return $this->error('validation_failed', $exception->getMessage(), 422);
+    }
+  }
+
+  /**
    * Deletes a palette owned by the selected theme. */
   public function delete(string $theme, string $palette): JsonResponse {
     $entity = $this->entityTypeManager->getStorage('canvas_utilities_palette')->load($palette);
@@ -76,10 +124,10 @@ final class PaletteController {
   }
 
   /**
-   * Validates normalized palette colors.
+   * Validates normalized palette entries.
    *
-   * @return array<string, array{id: string, label: string, value: string, role: string}>
-   *   Colors keyed by ID.
+   * @return array<string, array{id: string, label: string, value: string, role: string, type: string}>
+   *   Entries keyed by ID.
    */
   private function validateColors(mixed $candidate): array {
     if (!is_array($candidate) || $candidate === []) {
@@ -91,18 +139,33 @@ final class PaletteController {
         throw new \InvalidArgumentException('Each color must be an object.');
       }
       $id = $this->machineName((string) ($color['id'] ?? ''));
-      $value = strtolower(trim((string) ($color['value'] ?? '')));
-      if ($id === '' || !preg_match('/^#[0-9a-f]{6}([0-9a-f]{2})?$/', $value)) {
-        throw new \InvalidArgumentException('Each color requires a unique ID and six- or eight-digit hex value.');
+      if ($id === '') {
+        throw new \InvalidArgumentException('Each color requires a unique ID.');
       }
       if (isset($colors[$id])) {
         throw new \InvalidArgumentException(sprintf('The color ID "%s" is duplicated.', $id));
+      }
+      $type = ($color['type'] ?? Palette::TYPE_COLOR) === Palette::TYPE_GRADIENT
+        ? Palette::TYPE_GRADIENT
+        : Palette::TYPE_COLOR;
+      $value = trim((string) ($color['value'] ?? ''));
+      if ($type === Palette::TYPE_GRADIENT) {
+        if (!CssGradient::isValid($value)) {
+          throw new \InvalidArgumentException(sprintf('"%s" is not a supported CSS gradient. Use linear-gradient(), radial-gradient(), or conic-gradient().', $id));
+        }
+      }
+      else {
+        $value = strtolower($value);
+        if (!preg_match('/^#[0-9a-f]{6}([0-9a-f]{2})?$/', $value)) {
+          throw new \InvalidArgumentException(sprintf('The color "%s" requires a six- or eight-digit hex value.', $id));
+        }
       }
       $colors[$id] = [
         'id' => $id,
         'label' => trim((string) ($color['label'] ?? $id)),
         'value' => $value,
         'role' => trim((string) ($color['role'] ?? '')),
+        'type' => $type,
       ];
     }
     return $colors;

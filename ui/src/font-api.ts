@@ -33,6 +33,20 @@ export async function uploadFont(theme: string, data: FormData, csrfToken: strin
   await expectSuccess(response);
 }
 
+export async function updateFont(
+  theme: string,
+  font: string,
+  changes: { label?: string; family?: string; fallbacks?: string; url?: string; status?: boolean },
+  csrfToken: string,
+): Promise<void> {
+  const response = await fetch(`/canvas-utilities/api/v1/fonts/${encodeURIComponent(theme)}/${encodeURIComponent(font)}`, {
+    method: 'PATCH', credentials: 'same-origin',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(changes),
+  });
+  await expectSuccess(response);
+}
+
 export async function deleteFont(theme: string, font: string, csrfToken: string): Promise<void> {
   const response = await fetch(`/canvas-utilities/api/v1/fonts/${encodeURIComponent(theme)}/${encodeURIComponent(font)}`, { method: 'DELETE', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-Token': csrfToken } });
   await expectSuccess(response);

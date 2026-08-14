@@ -15,7 +15,7 @@ describe('style-guide preview CSS', () => {
     const css = compilePreviewCss(
       guide,
       { color: { default: 'mercury__brand:primary' }, font: { default: 'mercury__inter' } },
-      [{ id: 'mercury__brand', label: 'Brand', theme: 'mercury', description: '', prefix: 'brand', weight: 0, status: true, colors: [{ id: 'primary', label: 'Primary', value: '#123456', role: '' }] }],
+      [{ id: 'mercury__brand', label: 'Brand', theme: 'mercury', description: '', prefix: 'brand', weight: 0, status: true, colors: [{ id: 'primary', label: 'Primary', value: '#123456', role: '', type: 'color' }] }],
       [{ id: 'mercury__inter', label: 'Inter', family: 'Inter', fallbacks: 'sans-serif', provider: 'remote_stylesheet', remoteUrl: '', faces: [], status: true }],
     );
     expect(css).toContain('--color: #123456;');

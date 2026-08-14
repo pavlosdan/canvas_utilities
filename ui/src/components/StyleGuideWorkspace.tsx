@@ -430,7 +430,11 @@ function ControlInput({ id, control, value, palettes, fonts, onChange }: { id: s
     );
   }
   if (control.type === 'palette_color') {
-    const options = palettes.flatMap((palette) => palette.colors.map((color) => ({ value: `${palette.id}:${color.id}`, label: `${palette.label} · ${color.label}` })));
+    // Gradients are excluded: a palette_color control feeds a CSS property
+    // expecting a <color>, and a gradient is an <image>.
+    const options = palettes.flatMap((palette) => palette.colors
+      .filter((color) => color.type !== 'gradient')
+      .map((color) => ({ value: `${palette.id}:${color.id}`, label: `${palette.label} · ${color.label}` })));
     return <Select.Root value={String(value)} onValueChange={onChange}><Select.Trigger id={id} placeholder="Choose a palette color" /><Select.Content>{options.map((option) => <Select.Item key={option.value} value={option.value}>{option.label}</Select.Item>)}</Select.Content></Select.Root>;
   }
   if (control.type === 'font_family') {

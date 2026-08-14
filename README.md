@@ -12,7 +12,8 @@ Enable only the features a site needs:
   supports visually authored definitions, private drafts, conflict detection,
   live theme-page preview, and explicit publishing.
 - `canvas_utilities_palette` manages approved color palettes and emits CSS
-  custom properties.
+  custom properties. A palette entry is either a color or a gradient; see
+  [Gradients](#gradients).
 - `canvas_utilities_fonts` manages self-hosted WOFF2, WOFF, TTF, and OTF faces
   plus permission-gated HTTPS remote stylesheets.
 - `canvas_utilities_icons` imports individual SVG files, SVG-only ZIP archives,
@@ -24,6 +25,33 @@ Enable only the features a site needs:
 All feature modules depend only on the parent module. Their capability plugins
 make the matching workspace appear in Canvas when the current account has the
 required permission.
+
+## Gradients
+
+A palette entry is either a `color` or a `gradient`. Both are published as CSS
+custom properties under the palette's prefix, so a gradient is available to
+theme CSS and custom CSS as `var(--prefix-id)` exactly like a color.
+
+Gradients are deliberately **not** offered to:
+
+- Canvas component color props, and
+- style-guide `palette_color` controls.
+
+A gradient is a CSS `<image>`, not a `<color>`. It is valid in
+`background-image` and the `background` shorthand, and invalid in `color`,
+`border-color` and anywhere else a color is expected — where the browser
+discards the declaration, leaving the component silently unstyled rather than
+raising a visible error. Offering gradients in those places would produce
+selections that appear to work and then do nothing.
+
+Gradient values are emitted verbatim into a stylesheet, so they are validated
+against a strict allowlist: only `linear-gradient()`, `radial-gradient()`,
+`conic-gradient()` and their `repeating-` variants, with balanced parentheses
+and no character able to end the declaration, open a rule, or start a comment.
+`url()` and `image-set()` are rejected, because both can load remote assets.
+
+Entries stored before gradients existed have no type recorded and are treated
+as colors.
 
 ## Theme Style Guide definitions
 

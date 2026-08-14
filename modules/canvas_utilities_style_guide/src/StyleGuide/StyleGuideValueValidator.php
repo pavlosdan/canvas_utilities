@@ -231,7 +231,16 @@ final class StyleGuideValueValidator {
     $entity = $this->entityTypeManager->getStorage('canvas_utilities_palette')->load($palette_id);
     $colors = $entity instanceof ConfigEntityInterface ? $entity->get('colors') : NULL;
     $color = $this->findColor($colors, $color_id);
-    return is_array($color) ? (string) $color['value'] : '';
+    if (!is_array($color)) {
+      return '';
+    }
+    // A palette_color control targets a CSS property expecting a <color>. A
+    // gradient is an <image>, so emitting one would produce a declaration the
+    // browser discards, silently losing the style rather than failing loudly.
+    if (($color['type'] ?? 'color') === 'gradient') {
+      return '';
+    }
+    return (string) $color['value'];
   }
 
   /**
