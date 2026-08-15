@@ -328,10 +328,34 @@ select {
 
 .palette-color-row {
   display: grid;
-  /* type, swatch, opacity, label, machine name, value, remove */
-  grid-template-columns: 104px 42px 104px 1fr 1fr 160px auto;
+  /*
+   * type, swatch, opacity, label, machine name, value, remove.
+   *
+   * The header and each entry are separate grids, so every track has to size
+   * identically in both or the labels drift away from their fields. `1fr`
+   * alone does not: its implied minimum is the content width, which differs
+   * between a short label and a text input. `minmax(0, 1fr)` makes the split
+   * purely proportional, and the action column is fixed because the header
+   * has no button to measure.
+   */
+  grid-template-columns: 104px 42px 104px minmax(0, 1fr) minmax(0, 1fr) 160px 28px;
   gap: 8px;
   align-items: center;
+}
+
+/*
+ * Column labels for the entry rows. The fields carry their own aria-labels, so
+ * these are decorative reinforcement and are hidden from assistive technology
+ * to avoid announcing each column twice.
+ */
+.palette-color-header {
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--gray-5);
+}
+
+.palette-color-header > * {
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .palette-alpha input[type="range"] {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Badge, Box, Button, Callout, Card, Dialog, Flex, Heading, IconButton, Select, Text, TextField } from '@radix-ui/themes';
-import { ExclamationTriangleIcon, Pencil1Icon, PlusIcon } from '@radix-ui/react-icons';
+import { ExclamationTriangleIcon, Pencil1Icon, PlusIcon, TrashIcon } from '@radix-ui/react-icons';
 
 import ConfirmButton from './ConfirmButton';
 import { alphaPercent, composeHexColor, parseHexColor } from '../color-value';
@@ -181,6 +181,18 @@ function PaletteDialog({ theme, csrfToken, palette, onSaved }: {
             </Flex>
           </Flex>
 
+          {colors.length > 0 && (
+            <div className="palette-color-row palette-color-header" aria-hidden="true">
+              <Text size="1" color="gray">Type</Text>
+              <Text size="1" color="gray">Color</Text>
+              <Text size="1" color="gray">Opacity</Text>
+              <Text size="1" color="gray">Label</Text>
+              <Text size="1" color="gray">Machine name</Text>
+              <Text size="1" color="gray">Value</Text>
+              <span />
+            </div>
+          )}
+
           {colors.map((color, index) => (
             <div className="palette-color-row" key={index}>
               <Select.Root
@@ -213,7 +225,18 @@ function PaletteDialog({ theme, csrfToken, palette, onSaved }: {
                 value={color.value}
                 onChange={(event) => setColors(updateAt(colors, index, { value: event.target.value }))}
               />
-              {colors.length > 1 && <Button size="1" variant="ghost" color="red" onClick={() => setColors(colors.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>}
+              {colors.length > 1 && (
+                <IconButton
+                  size="1"
+                  variant="ghost"
+                  color="red"
+                  aria-label={`Remove ${color.label || `entry ${index + 1}`}`}
+                  title="Remove"
+                  onClick={() => setColors(colors.filter((_, itemIndex) => itemIndex !== index))}
+                >
+                  <TrashIcon />
+                </IconButton>
+              )}
             </div>
           ))}
 
