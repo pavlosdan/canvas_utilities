@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\canvas_utilities_palette\Controller\Api\V1;
 
+use Drupal\canvas_utilities_palette\Color\CssColor;
 use Drupal\canvas_utilities_palette\Color\CssGradient;
 use Drupal\canvas_utilities_palette\Entity\Palette;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -154,11 +155,19 @@ final class PaletteController {
           throw new \InvalidArgumentException(sprintf('"%s" is not a supported CSS gradient. Use linear-gradient(), radial-gradient(), or conic-gradient().', $id));
         }
       }
-      else {
-        $value = strtolower($value);
-        if (!preg_match('/^#[0-9a-f]{6}([0-9a-f]{2})?$/', $value)) {
-          throw new \InvalidArgumentException(sprintf('The color "%s" requires a six- or eight-digit hex value.', $id));
+      elseif (CssColor::isValid($value)) {
+        // Normalize hex casing only. Color functions are case-insensitive to
+        // CSS, but a custom property name inside var() is not, so the value as
+        // a whole must be left alone.
+        if (str_starts_with($value, '#')) {
+          $value = strtolower($value);
         }
+      }
+      else {
+        // Anything CssColor accepts is allowed, which covers translucency in
+        // both notations: `#rrggbbaa` and the alpha channel of rgba(), hsla()
+        // and the modern color functions.
+        throw new \InvalidArgumentException(sprintf('The color "%s" is not a supported CSS color. Use a hex value such as #3366ff or #3366ff80, or a color function such as rgb(51 102 255 / 50%%).', $id));
       }
       $colors[$id] = [
         'id' => $id,

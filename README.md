@@ -26,6 +26,22 @@ All feature modules depend only on the parent module. Their capability plugins
 make the matching workspace appear in Canvas when the current account has the
 required permission.
 
+## Transparency
+
+Palette colors accept any value `CssColor` recognizes, which includes every way
+CSS expresses opacity: `#rrggbbaa` and `#rgba` shorthand, `rgba()`, `hsla()`,
+and the `/ alpha` slot of the modern color functions such as
+`rgb(51 102 255 / 20%)` and `oklch(70% 0.1 200 / 0.5)`.
+
+The palette builder pairs the hue picker with an opacity slider, because
+`<input type="color">` has no alpha channel and silently drops it. A value the
+hue picker cannot represent — `rgba()`, `oklch()`, `var()` — keeps a read-only
+preview and stays editable as text. Returning opacity to 100% restores the
+short `#rrggbb` form rather than leaving a redundant `ff`.
+
+Swatches are drawn over a checkerboard, since a half-transparent color is
+otherwise indistinguishable from a lighter opaque one.
+
 ## Gradients
 
 A palette entry is either a `color` or a `gradient`. Both are published as CSS

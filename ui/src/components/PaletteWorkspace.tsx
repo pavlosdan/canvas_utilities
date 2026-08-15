@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Badge, Box, Button, Callout, Card, Dialog, Flex, Heading, IconButton, Select, Text, TextField } from '@radix-ui/themes';
 import { ExclamationTriangleIcon, Pencil1Icon, PlusIcon } from '@radix-ui/react-icons';
 
 import ConfirmButton from './ConfirmButton';
+import { alphaPercent, composeHexColor, parseHexColor } from '../color-value';
 import { createPalette, deletePalette, getPalettes, updatePalette } from '../palette-api';
 import type { Palette, PaletteColor, PaletteEntryType } from '../palette-api';
 
@@ -69,7 +71,12 @@ export default function PaletteWorkspace({ theme, csrfToken }: { theme: string; 
                   key={color.id}
                   className={`swatch${color.type === 'gradient' ? ' swatch--gradient' : ''}`}
                   title={`${color.label}: ${color.value}`}
-                  style={color.type === 'gradient' ? { backgroundImage: color.value } : { backgroundColor: color.value }}
+                  // Set as a custom property rather than `background`, so the
+                  // checkerboard behind it stays visible through a
+                  // translucent color.
+                  style={color.type === 'gradient'
+                    ? { backgroundImage: color.value }
+                    : ({ '--canvas-utilities-swatch-color': color.value } as CSSProperties)}
                 ><span>{color.label}</span></div>
               ))}
             </div>
@@ -192,7 +199,11 @@ function PaletteDialog({ theme, csrfToken, palette, onSaved }: {
 
               {color.type === 'gradient'
                 ? <span className="palette-gradient-preview" style={{ backgroundImage: color.value }} aria-hidden="true" />
-                : <input type="color" aria-label={`Color ${index + 1}`} value={color.value} onChange={(event) => setColors(updateAt(colors, index, { value: event.target.value }))} />}
+                : <ColorSwatchInput index={index} value={color.value} onChange={(next) => setColors(updateAt(colors, index, { value: next }))} />}
+
+              {color.type === 'gradient'
+                ? <span />
+                : <AlphaSlider index={index} value={color.value} onChange={(next) => setColors(updateAt(colors, index, { value: next }))} />}
 
               <TextField.Root aria-label={`Entry ${index + 1} label`} placeholder="Label" value={color.label} onChange={(event) => setColors(updateAt(colors, index, { label: event.target.value, id: color.id || machineName(event.target.value) }))} />
               <TextField.Root aria-label={`Entry ${index + 1} ID`} placeholder="Machine name" value={color.id} onChange={(event) => setColors(updateAt(colors, index, { id: machineName(event.target.value) }))} />
@@ -221,6 +232,60 @@ function PaletteDialog({ theme, csrfToken, palette, onSaved }: {
         </Flex>
       </Dialog.Content>
     </Dialog.Root>
+  );
+}
+
+/**
+ * The hue half of a color entry.
+ *
+ * `<input type="color">` cannot represent a value like `rgba(…)` or
+ * `oklch(…)`, and would silently rewrite it to the nearest opaque hex. Those
+ * values therefore get a read-only preview and stay editable as text.
+ */
+function ColorSwatchInput({ index, value, onChange }: { index: number; value: string; onChange: (value: string) => void }) {
+  const parsed = parseHexColor(value);
+  if (!parsed) {
+    return <span
+      className="palette-color-preview"
+      style={{ '--canvas-utilities-swatch-color': value } as CSSProperties}
+      title={value}
+      aria-label={`Color ${index + 1} preview`}
+    />;
+  }
+  return (
+    <input
+      type="color"
+      aria-label={`Color ${index + 1}`}
+      value={parsed.hex}
+      // Keep the opacity that is already set; only the hue is changing.
+      onChange={(event) => onChange(composeHexColor(event.target.value, parsed.alpha))}
+    />
+  );
+}
+
+/**
+ * The opacity half of a color entry.
+ */
+function AlphaSlider({ index, value, onChange }: { index: number; value: string; onChange: (value: string) => void }) {
+  const parsed = parseHexColor(value);
+  if (!parsed) {
+    // Opacity is already part of the written value, e.g. rgba(…, 0.5).
+    return <span />;
+  }
+  const percent = alphaPercent(value);
+  return (
+    <Flex align="center" gap="1" className="palette-alpha">
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={percent}
+        aria-label={`Color ${index + 1} opacity`}
+        title={`Opacity ${percent}%`}
+        onChange={(event) => onChange(composeHexColor(parsed.hex, Number(event.target.value) / 100))}
+      />
+      <Text size="1" color="gray" className="palette-alpha__value">{percent}%</Text>
+    </Flex>
   );
 }
 

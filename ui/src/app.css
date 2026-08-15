@@ -228,6 +228,18 @@ select {
   background: var(--gray-1);
 }
 
+.color-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+.color-preview::before {
+  position: absolute;
+  background: var(--canvas-utilities-swatch-color, transparent);
+  content: '';
+  inset: 0;
+}
+
 .builder-control {
   padding: 16px;
 }
@@ -267,6 +279,32 @@ select {
   border-radius: var(--radius-3);
 }
 
+.swatch,
+.palette-color-preview,
+.color-preview {
+  /*
+   * Without a backdrop a half-transparent color is indistinguishable from a
+   * lighter opaque one, so opacity stays invisible until the color is used
+   * somewhere else.
+   */
+  background-image:
+    linear-gradient(45deg, var(--gray-5) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--gray-5) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--gray-5) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--gray-5) 75%);
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  background-size: 10px 10px;
+}
+
+/* The color sits above the checkerboard; the label sits above both. */
+.swatch::before,
+.palette-color-preview::before {
+  position: absolute;
+  background: var(--canvas-utilities-swatch-color, transparent);
+  content: '';
+  inset: 0;
+}
+
 .swatch {
   position: relative;
   min-width: 56px;
@@ -290,10 +328,31 @@ select {
 
 .palette-color-row {
   display: grid;
-  /* type, swatch, label, machine name, value, remove */
-  grid-template-columns: 108px 42px 1fr 1fr 170px auto;
+  /* type, swatch, opacity, label, machine name, value, remove */
+  grid-template-columns: 104px 42px 104px 1fr 1fr 160px auto;
   gap: 8px;
   align-items: center;
+}
+
+.palette-alpha input[type="range"] {
+  width: 100%;
+  min-width: 0;
+}
+
+.palette-alpha__value {
+  width: 34px;
+  flex-shrink: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.palette-color-preview {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 34px;
+  border: 1px solid var(--gray-6);
+  border-radius: var(--radius-2);
 }
 
 .palette-color-row input[type="color"] {

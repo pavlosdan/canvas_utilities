@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   Badge,
   Box,
@@ -33,6 +33,7 @@ import type {
 } from '../style-guide-api';
 import { getPalettes } from '../palette-api';
 import type { Palette } from '../palette-api';
+import { alphaPercent, composeHexColor, parseHexColor } from '../color-value';
 import { getFonts } from '../font-api';
 import type { FontFamily } from '../font-api';
 
@@ -492,10 +493,38 @@ function ControlInput({ id, control, value, palettes, fonts, onChange }: { id: s
     return <Select.Root value={String(value)} onValueChange={onChange}><Select.Trigger id={id} placeholder="Choose a font family" /><Select.Content>{fonts.map((font) => <Select.Item key={font.id} value={font.id}>{font.label}</Select.Item>)}</Select.Content></Select.Root>;
   }
   if (control.type === 'color') {
+    const current = String(value);
+    const parsed = parseHexColor(current);
     return (
       <Flex gap="2" align="center">
-        <input id={`${id}-picker`} className="color-input" type="color" value={toHexColor(String(value))} onChange={(event) => onChange(event.target.value)} aria-label={`${id} color picker`} />
-        <TextField.Root id={id} value={String(value)} onChange={(event) => onChange(event.target.value)} aria-label={`${id} CSS color`} />
+        {parsed
+          ? <input
+              id={`${id}-picker`}
+              className="color-input"
+              type="color"
+              value={parsed.hex}
+              // Preserve the opacity already set; only the hue changes here.
+              onChange={(event) => onChange(composeHexColor(event.target.value, parsed.alpha))}
+              aria-label={`${id} color picker`}
+            />
+          // A value such as rgba(…) or var(…) cannot be shown by a hue picker,
+          // so it gets a preview and stays editable as text.
+          : <span className="color-input color-preview" style={{ '--canvas-utilities-swatch-color': current } as CSSProperties} title={current} />}
+        {parsed && (
+          <Flex align="center" gap="1" className="palette-alpha">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={alphaPercent(current)}
+              aria-label={`${id} opacity`}
+              title={`Opacity ${alphaPercent(current)}%`}
+              onChange={(event) => onChange(composeHexColor(parsed.hex, Number(event.target.value) / 100))}
+            />
+            <Text size="1" color="gray" className="palette-alpha__value">{alphaPercent(current)}%</Text>
+          </Flex>
+        )}
+        <TextField.Root id={id} value={current} onChange={(event) => onChange(event.target.value)} aria-label={`${id} CSS color`} />
       </Flex>
     );
   }
@@ -512,8 +541,4 @@ function Message({ message }: { message: { kind: 'success' | 'error'; text: stri
       <Callout.Text>{message.text}</Callout.Text>
     </Callout.Root>
   );
-}
-
-function toHexColor(value: string): string {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
 }
