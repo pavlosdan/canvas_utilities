@@ -6,3 +6,98 @@
  */
 
 declare(strict_types=1);
+
+/**
+ * Implements hook_canvas_extension_info_alter().
+ *
+ * Adds a build fingerprint to the URL of every extension this project ships.
+ *
+ * Canvas loads an extension by pointing an iframe at a static HTML file, which
+ * the webserver serves without a Cache-Control header. Browsers then cache it
+ * heuristically. That file names the built JavaScript and CSS by content hash,
+ * and a rebuild both changes those names and removes the previous ones, so a
+ * browser still holding the old HTML requests assets that no longer exist:
+ * every request 404s and the extension renders as a blank panel with no
+ * indication of why. Clearing Drupal's caches cannot help, because nothing is
+ * wrong on the server.
+ *
+ * Appending a fingerprint makes the iframe URL itself change whenever the
+ * build changes, so the browser treats it as a new resource and fetches the
+ * current HTML. The assets stay content-hashed and therefore immutable.
+ *
+ * @param array<string, array<string, mixed>> $definitions
+ *   Canvas extension definitions, keyed by extension ID.
+ */
+function canvas_utilities_canvas_extension_info_alter(array &$definitions): void {
+  $module_handler = \Drupal::service('module_handler');
+
+  foreach ($definitions as &$definition) {
+    $provider = $definition['provider'] ?? '';
+    if (!str_starts_with((string) $provider, 'canvas_utilities') || !$module_handler->moduleExists($provider)) {
+      continue;
+    }
+    $url = (string) ($definition['url'] ?? '');
+    // Remote extensions are not ours to fingerprint.
+    if ($url === '' || str_starts_with($url, 'http')) {
+      continue;
+    }
+    $fingerprint = canvas_utilities_extension_fingerprint($provider, $url);
+    if ($fingerprint !== NULL) {
+      $definition['url'] = $url . (str_contains($url, '?') ? '&' : '?') . 'v=' . $fingerprint;
+    }
+  }
+}
+
+/**
+ * Returns a short fingerprint of an extension's entry file.
+ *
+ * The definition is computed once and then cached with the plugin definitions,
+ * so a rebuild during development needs a cache rebuild before the new
+ * fingerprint is published.
+ *
+ * @param string $provider
+ *   The module providing the extension.
+ * @param string $url
+ *   The extension URL.
+ *
+ * @return string|null
+ *   The fingerprint, or NULL when the entry file cannot be read.
+ */
+function canvas_utilities_extension_fingerprint(string $provider, string $url): ?string {
+  // Canvas has already rewritten the URL into a root-relative path by the time
+  // this alter runs, and that path carries the site's base path, which differs
+  // on a subdirectory install. Locating the module's own directory inside the
+  // URL yields a path relative to the docroot without having to know it.
+  // @see \Drupal\Core\Plugin\DefaultPluginManager::findDefinitions()
+  $module_path = \Drupal::service('extension.list.module')->getPath($provider);
+  $url_path = (string) parse_url($url, PHP_URL_PATH);
+  $position = strpos($url_path, '/' . $module_path . '/');
+  if ($position === FALSE) {
+    return NULL;
+  }
+  $path = DRUPAL_ROOT . '/' . substr($url_path, $position + 1);
+  if (!is_file($path)) {
+    return NULL;
+  }
+
+  // Hash the entry file together with its siblings. The built app names its
+  // hashed assets inside the entry document, so that file alone would be
+  // enough there, but an extension made of plain files next to each other —
+  // an index.html loading a sibling script — changes without the entry file
+  // changing at all.
+  $files = [$path];
+  foreach ((array) glob(dirname($path) . '/*') as $sibling) {
+    if (is_string($sibling) && is_file($sibling)) {
+      $files[] = $sibling;
+    }
+  }
+  sort($files);
+  $material = '';
+  foreach (array_unique($files) as $file) {
+    $hash = hash_file('xxh64', $file);
+    if ($hash !== FALSE) {
+      $material .= $hash;
+    }
+  }
+  return $material === '' ? NULL : hash('xxh64', $material);
+}
