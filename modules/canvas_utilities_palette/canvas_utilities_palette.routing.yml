@@ -21,6 +21,19 @@ canvas_utilities_palette.api.v1.create:
   options:
     _format: 'json'
 
+canvas_utilities_palette.api.v1.update:
+  path: '/canvas-utilities/api/v1/palettes/{theme}/{palette}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_palette\Controller\Api\V1\PaletteController::update'
+  requirements:
+    _permission: 'administer canvas utilities palettes'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    palette: '[a-z][a-z0-9_]*'
+  methods: [PATCH]
+  options:
+    _format: 'json'
+
 canvas_utilities_palette.api.v1.delete:
   path: '/canvas-utilities/api/v1/palettes/{theme}/{palette}'
   defaults:

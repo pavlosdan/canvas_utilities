@@ -41,7 +41,12 @@ final class PalettePickerOptions {
 
     $options = [];
     foreach ($palettes as $palette) {
-      foreach ($palette->getColors() as $color) {
+      // Gradients are deliberately absent. A component color prop feeds
+      // properties such as `color` and `border-color`, which accept a
+      // `<color>`; a gradient is an `<image>` and would be dropped as invalid,
+      // producing a silently unstyled component rather than a visible error.
+      // @see \Drupal\canvas_utilities_palette\Color\CssGradient
+      foreach ($palette->getSolidColors() as $color) {
         $options[] = [
           'palette' => (string) $palette->label(),
           'label' => $color['label'],

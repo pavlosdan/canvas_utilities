@@ -64,6 +64,23 @@ final class IconLibrary extends ConfigEntityBase {
   }
 
   /**
+   * Returns the source provider plugin ID. */
+  public function getProvider(): string {
+    return $this->provider;
+  }
+
+  /**
+   * Returns the library ID without its theme prefix.
+   *
+   * This is the namespace applied to internal SVG IDs at import time, so later
+   * uploads must reuse it to stay consistent with already-stored icons.
+   */
+  public function getShortId(): string {
+    $prefix = $this->theme . '__';
+    return str_starts_with($this->id, $prefix) ? substr($this->id, strlen($prefix)) : $this->id;
+  }
+
+  /**
    * Returns icon metadata.
    *
    * @return array<string, array{id: string, label: string, group: string, uri: string, file_uuid: string, viewBox: string, hash: string}>
@@ -93,8 +110,30 @@ final class IconLibrary extends ConfigEntityBase {
       'license' => $this->license,
       'source' => $this->source,
       'status' => $this->status(),
-      'icons' => array_values($this->icons),
+      'icons' => $this->sortedIcons(),
     ];
+  }
+
+  /**
+   * Returns the icons in the order they should be presented.
+   *
+   * Icons are stored in the order they were imported, which for an incremental
+   * library reflects nothing more than the sequence of uploads. Sorting by
+   * label here keeps every consumer in agreement, matching what the Canvas
+   * icon picker already does.
+   *
+   * The comparison is natural and case-insensitive, so "arrow-2" precedes
+   * "arrow-10" rather than following it.
+   *
+   * @return list<array{id: string, label: string, group: string, uri: string, file_uuid: string, viewBox: string, hash: string}>
+   *   Icons ordered by label.
+   *
+   * @see \Drupal\canvas_utilities_icons\IconPickerOptions::forTheme()
+   */
+  private function sortedIcons(): array {
+    $icons = array_values($this->icons);
+    usort($icons, static fn (array $first, array $second): int => strnatcasecmp($first['label'], $second['label']));
+    return $icons;
   }
 
 }

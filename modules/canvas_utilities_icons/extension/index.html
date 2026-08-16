@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Icon props</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fff;
+    --fg: #1c2024;
+    --muted: #60646c;
+    --line: #d9d9e0;
+    --field: #fff;
+    --accent: #0d74ce;
+    --accent-fg: #fff;
+    --danger: #ce2c31;
+    --ok-bg: #e6f6eb;
+    --ok-fg: #1a7f37;
+    --err-bg: #fff0ee;
+    --err-fg: #ce2c31;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111113;
+      --fg: #eeeef0;
+      --muted: #b0b4ba;
+      --line: #43484e;
+      --field: #1c2023;
+      --accent: #3b9eff;
+      --accent-fg: #06121f;
+      --danger: #ff9592;
+      --ok-bg: #12261e;
+      --ok-fg: #3dd68c;
+      --err-bg: #2a1314;
+      --err-fg: #ff9592;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { margin: 0 0 4px; font-size: 16px; }
+  p.lede { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+  .card {
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 14px;
+  }
+  .card h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px; }
+  th { color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .tag {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: 11px;
+  }
+  label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; }
+  input[type=text] {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--field);
+    color: var(--fg);
+    font: inherit;
+  }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row > div { flex: 1 1 200px; }
+  button {
+    padding: 7px 13px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button[disabled] { opacity: .55; cursor: default; }
+  button.secondary { background: transparent; border-color: var(--line); color: var(--fg); }
+  button.linky {
+    padding: 2px 4px;
+    background: none;
+    border: 0;
+    color: var(--danger);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .msg { padding: 9px 11px; border-radius: 6px; margin-bottom: 12px; font-size: 13px; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok-fg); }
+  .msg.err { background: var(--err-bg); color: var(--err-fg); }
+  .empty { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Icon props</h1>
+<p class="lede">Adds a string prop bound to the Canvas Utilities icon picker, so editors choose an icon instead of typing a URL.</p>
+<div id="message" hidden></div>
+<div id="app"></div>
+<script src="extension.js"></script>
+</body>
+</html>

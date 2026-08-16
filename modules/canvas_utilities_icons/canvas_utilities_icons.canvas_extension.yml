@@ -1,0 +1,9 @@
+canvas_utilities_icon_props:
+  name: Icon props
+  description: Add an icon-picker prop to the code component open in the editor.
+  url: extension/index.html
+  icon: assets/icon-prop.svg
+  type: code-editor
+  api_version: "1.0"
+  permissions:
+    - administer canvas utilities icons

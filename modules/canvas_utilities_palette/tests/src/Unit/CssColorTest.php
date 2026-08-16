@@ -35,6 +35,13 @@ final class CssColorTest extends UnitTestCase {
     yield 'short hex' => ['#fff', TRUE];
     yield 'named color' => ['rebeccapurple', TRUE];
     yield 'modern rgb' => ['rgb(51 102 255 / 80%)', TRUE];
+    // Translucency in every notation a palette entry may now carry.
+    // @see \Drupal\canvas_utilities_palette\Controller\Api\V1\PaletteController::validateColors()
+    yield 'short hex with alpha' => ['#36f8', TRUE];
+    yield 'legacy rgba' => ['rgba(51, 102, 255, 0.35)', TRUE];
+    yield 'legacy hsla' => ['hsla(220, 100%, 60%, 0.5)', TRUE];
+    yield 'oklch with alpha' => ['oklch(70% 0.1 200 / 0.5)', TRUE];
+    yield 'fully transparent hex' => ['#3366ff00', TRUE];
     yield 'palette variable' => ['var(--brand-primary)', TRUE];
     yield 'color mix' => ['color-mix(in srgb, red 40%, blue)', TRUE];
     yield 'empty' => ['', FALSE];

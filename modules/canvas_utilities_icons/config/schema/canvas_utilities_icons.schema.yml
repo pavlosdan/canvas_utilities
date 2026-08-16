@@ -1,16 +1,32 @@
+# Icon and library IDs derive from uploaded filenames, where hyphens are the
+# usual separator: "arrow-left.svg", "chevron-down.svg". Core's `machine_name`
+# type allows only [a-z0-9_], so those very common names would be stored as
+# schema-invalid configuration.
+# @see \Drupal\canvas_utilities_icons\Import\IconImporter::machineName()
+canvas_utilities_icons.machine_name:
+  type: string
+  label: 'Icon machine name'
+  constraints:
+    Regex:
+      pattern: '/^[a-z0-9_][a-z0-9_-]*$/'
+      message: "The %value machine name is not valid."
+    Length:
+      # @see \Drupal\Core\Config\Entity\ConfigEntityStorage::MAX_ID_LENGTH
+      max: 166
+
 canvas_utilities_icons.library.*:
   type: config_entity
   label: 'Canvas Utilities icon library'
   constraints:
     FullyValidatable: ~
   mapping:
-    id: { type: machine_name, label: 'ID' }
+    id: { type: canvas_utilities_icons.machine_name, label: 'ID' }
     label: { type: required_label, label: 'Label' }
     uuid: { type: uuid, label: 'UUID' }
     status: { type: boolean, label: 'Enabled' }
     theme: { type: machine_name, label: 'Theme' }
     provider: { type: string, label: 'Source provider' }
-    prefix: { type: machine_name, label: 'Icon prefix' }
+    prefix: { type: canvas_utilities_icons.machine_name, label: 'Icon prefix' }
     license: { type: string, label: 'License' }
     source: { type: string, label: 'Source attribution' }
     icons:
@@ -19,11 +35,10 @@ canvas_utilities_icons.library.*:
       sequence:
         type: mapping
         mapping:
-          id: { type: machine_name, label: 'Icon ID' }
+          id: { type: canvas_utilities_icons.machine_name, label: 'Icon ID' }
           label: { type: required_label, label: 'Icon label' }
           group: { type: string, label: 'Group' }
           uri: { type: string, label: 'Sanitized file URI' }
           file_uuid: { type: uuid, label: 'File UUID' }
           viewBox: { type: string, label: 'SVG viewBox' }
           hash: { type: string, label: 'Content hash' }
-

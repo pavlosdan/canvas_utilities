@@ -1,14 +1,84 @@
 import { useEffect, useState } from 'react';
-import { Badge, Box, Button, Callout, Card, Dialog, Flex, Heading, Select, Text, TextField } from '@radix-ui/themes';
-import { ExclamationTriangleIcon, PlusIcon } from '@radix-ui/react-icons';
+import { Badge, Box, Button, Callout, Card, Dialog, Flex, Heading, IconButton, Select, Text, TextField } from '@radix-ui/themes';
+import { ExclamationTriangleIcon, Pencil1Icon, PlusIcon, TrashIcon } from '@radix-ui/react-icons';
 
-import { deleteIconLibrary, getIconLibraries, importIconLibrary } from '../icon-api';
-import type { IconLibrary } from '../icon-api';
+import ConfirmButton from './ConfirmButton';
+import { addIconsToLibrary, deleteIcon, deleteIconLibrary, getIconLibraries, getIconUsage, importIconLibrary, updateIconLibrary } from '../icon-api';
+import type { IconLibrary, IconUsageRecord } from '../icon-api';
+
+interface UsageLocation extends IconUsageRecord {
+  /** How many of the icons being deleted this location uses. */
+  iconCount: number;
+}
+
+/**
+ * Collapses per-icon references into one entry per place.
+ *
+ * The API reports references per icon, which is what the single-icon dialog
+ * needs. Deleting a whole library asks a different question — which places are
+ * affected — and a page using several icons from that library would otherwise
+ * be listed once per icon.
+ */
+function toLocations(icons: Record<string, IconUsageRecord[]>): UsageLocation[] {
+  const byLocation = new Map<string, UsageLocation>();
+  Object.values(icons).forEach((records) => {
+    records.forEach((record) => {
+      const existing = byLocation.get(record.id);
+      if (existing) {
+        existing.iconCount += 1;
+        return;
+      }
+      byLocation.set(record.id, { ...record, iconCount: 1 });
+    });
+  });
+  return [...byLocation.values()];
+}
+
+/**
+ * Renders where something is used, or says nothing found.
+ *
+ * The scan cannot see an icon URL hard-coded inside a component's own JS or
+ * CSS, so "no usage found" is phrased as a negative result rather than a
+ * guarantee that deleting is safe.
+ */
+function UsageDetails({ locations, subject }: { locations: UsageLocation[]; subject: string }) {
+  if (locations.length === 0) {
+    return <Callout.Root color="gray" mt="3">
+      <Callout.Text size="2">No usage found. A URL written directly into component code cannot be detected, so check there too.</Callout.Text>
+    </Callout.Root>;
+  }
+  const shown = locations.slice(0, 8);
+  return <Callout.Root color="amber" mt="3">
+    <Callout.Icon><ExclamationTriangleIcon /></Callout.Icon>
+    <Callout.Text size="2">
+      <strong>{subject} still in use in {locations.length} place{locations.length === 1 ? '' : 's'}.</strong> Deleting will leave {locations.length === 1 ? 'it' : 'them'} without an icon.
+      <ul className="usage-list">
+        {shown.map((location) => <li key={location.id}>
+          {location.label} <Text color="gray">({location.type}{location.iconCount > 1 ? `, ${location.iconCount} icons` : ''})</Text>
+        </li>)}
+        {locations.length > shown.length && <li><Text color="gray">and {locations.length - shown.length} more…</Text></li>}
+      </ul>
+    </Callout.Text>
+  </Callout.Root>;
+}
 
 export default function IconWorkspace({ theme, csrfToken }: { theme: string; csrfToken: string }) {
   const [libraries, setLibraries] = useState<IconLibrary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const load = async (signal?: AbortSignal) => setLibraries(await getIconLibraries(theme, signal));
+
+  // Wraps every mutation so a failed request always reaches the user.
+  const run = async (action: () => Promise<void>, fallback: string) => {
+    setError(null);
+    try {
+      await action();
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : fallback);
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     load(controller.signal).catch((reason: unknown) => {
@@ -24,10 +94,66 @@ export default function IconWorkspace({ theme, csrfToken }: { theme: string; csr
       <ImportDialog theme={theme} csrfToken={csrfToken} onCreated={() => load()} />
     </Flex>
     {error && <Callout.Root color="red" role="alert" mt="4"><Callout.Icon><ExclamationTriangleIcon /></Callout.Icon><Callout.Text>{error}</Callout.Text></Callout.Root>}
+    {notice && <Callout.Root color="green" role="status" mt="4"><Callout.Text>{notice}</Callout.Text></Callout.Root>}
     <div className="icon-library-list">
       {libraries.map((library) => <Card key={library.id} className="icon-library-card">
-        <Flex justify="between" align="center" gap="3"><Box><Heading size="5">{library.label}</Heading><Text size="2" color="gray">Prefix: {library.prefix}</Text></Box><Flex gap="2" align="center"><Badge>{library.icons.length} icons</Badge><Button size="1" variant="ghost" color="red" onClick={async () => { if (window.confirm(`Delete ${library.label}?`)) { try { await deleteIconLibrary(theme, library.id, csrfToken); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Delete failed.'); } } }}>Delete</Button></Flex></Flex>
-        <div className="icon-grid">{library.icons.map((icon) => <figure key={icon.id} className="icon-item"><img src={icon.url} alt="" /><figcaption>{icon.label}</figcaption></figure>)}</div>
+        <Flex justify="between" align="center" gap="3" wrap="wrap">
+          <Box>
+            <Heading size="5">{library.label}</Heading>
+            <Text size="2" color="gray">Prefix: {library.prefix}</Text>
+          </Box>
+          <Flex gap="2" align="center">
+            <Badge>{library.icons.length} icons</Badge>
+            <AddIconsDialog
+              theme={theme}
+              csrfToken={csrfToken}
+              library={library}
+              onAdded={async (summary) => { setNotice(summary); await load(); }}
+              onError={setError}
+            />
+            <EditLibraryDialog
+              theme={theme}
+              csrfToken={csrfToken}
+              library={library}
+              onSaved={() => load()}
+              onError={setError}
+            />
+            <ConfirmButton
+              size="1"
+              variant="ghost"
+              color="red"
+              title={`Delete ${library.label}?`}
+              description="The library and its sanitized SVG files are removed."
+              loadDetails={async () => {
+                const report = await getIconUsage(theme, library.id);
+                return <UsageDetails locations={toLocations(report.icons)} subject="These icons are" />;
+              }}
+              onConfirm={() => run(() => deleteIconLibrary(theme, library.id, csrfToken), 'Delete failed.')}
+            >Delete</ConfirmButton>
+          </Flex>
+        </Flex>
+        <div className="icon-grid">{library.icons.map((icon) => <figure key={icon.id} className="icon-item">
+          <img src={icon.url} alt="" />
+          <figcaption>{icon.label}</figcaption>
+          <ConfirmButton
+            size="1"
+            variant="ghost"
+            color="red"
+            className="icon-item__remove"
+            title={`Remove ${icon.label}?`}
+            description={`The icon is removed from ${library.label} and its file is deleted.`}
+            loadDetails={async () => {
+              const report = await getIconUsage(theme, library.id);
+              return <UsageDetails
+                locations={toLocations({ [icon.id]: report.icons[icon.id] ?? [] })}
+                subject="This icon is"
+              />;
+            }}
+            confirmLabel="Remove"
+            onConfirm={() => run(() => deleteIcon(theme, library.id, icon.id, csrfToken), 'Unable to remove the icon.')}
+          ><TrashIcon /></ConfirmButton>
+        </figure>)}</div>
+        {library.icons.length === 0 && <Text as="p" size="2" color="gray" mt="3">This library has no icons yet. Use “Add icons” to upload some.</Text>}
         {(library.license || library.source) && <Text as="p" size="1" color="gray" mt="3">{library.license}{library.license && library.source ? ' · ' : ''}{library.source}</Text>}
       </Card>)}
       {libraries.length === 0 && <Card className="empty-card"><Heading size="4">No icon libraries yet</Heading><Text as="p" color="gray" mt="2">Import individual SVGs, an SVG-only ZIP archive, or an SVG sprite.</Text></Card>}
@@ -49,7 +175,7 @@ function ImportDialog({ theme, csrfToken, onCreated }: { theme: string; csrfToke
     const data = new FormData();
     data.set('label', label); data.set('id', machineName(label)); data.set('prefix', machineName(label)); data.set('provider', provider); data.set('license', license); data.set('source', source);
     files.forEach((file) => data.append('source[]', file));
-    try { await importIconLibrary(theme, data, csrfToken); await onCreated(); setOpen(false); setError(null); setFiles([]); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Import failed.'); }
+    try { await importIconLibrary(theme, data, csrfToken); await onCreated(); setOpen(false); setError(null); setFiles([]); setLabel(''); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Import failed.'); }
   };
   return <Dialog.Root open={open} onOpenChange={setOpen}><Dialog.Trigger><Button><PlusIcon />Import library</Button></Dialog.Trigger><Dialog.Content maxWidth="620px"><Dialog.Title>Import icon library</Dialog.Title><Dialog.Description>SVG markup is sanitized and external references are removed before it is stored.</Dialog.Description><Flex direction="column" gap="4" mt="5">
     <Box><Text as="label" htmlFor="icon-library-label">Library name</Text><TextField.Root id="icon-library-label" value={label} onChange={(event) => setLabel(event.target.value)} /></Box>
@@ -59,6 +185,139 @@ function ImportDialog({ theme, csrfToken, onCreated }: { theme: string; csrfToke
     {error && <Callout.Root color="red" role="alert"><Callout.Text>{error}</Callout.Text></Callout.Root>}
     <Flex justify="end" gap="3"><Dialog.Close><Button variant="soft" color="gray">Cancel</Button></Dialog.Close><Button onClick={submit}>Import</Button></Flex>
   </Flex></Dialog.Content></Dialog.Root>;
+}
+
+/**
+ * Uploads more icons into a library that already exists.
+ */
+function AddIconsDialog({ theme, csrfToken, library, onAdded, onError }: {
+  theme: string;
+  csrfToken: string;
+  library: IconLibrary;
+  onAdded: (summary: string) => Promise<void> | void;
+  onError: (message: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [provider, setProvider] = useState(library.provider);
+  const [files, setFiles] = useState<File[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const accept = provider === 'svg_zip' ? '.zip' : '.svg';
+  const inputId = `add-icons-${library.id}`;
+
+  const submit = async () => {
+    if (files.length === 0) return setError('Choose at least one file.');
+    const data = new FormData();
+    data.set('provider', provider);
+    files.forEach((file) => data.append('source[]', file));
+    setBusy(true);
+    try {
+      const report = await addIconsToLibrary(theme, library.id, data, csrfToken);
+      const parts = [
+        report.added.length ? `${report.added.length} added` : '',
+        report.replaced.length ? `${report.replaced.length} replaced` : '',
+        report.unchanged.length ? `${report.unchanged.length} already up to date` : '',
+      ].filter(Boolean);
+      await onAdded(`${library.label}: ${parts.join(', ') || 'no changes'}.`);
+      setOpen(false);
+      setError(null);
+      setFiles([]);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Unable to add icons.';
+      setError(message);
+      onError(message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <Dialog.Root open={open} onOpenChange={(next) => { setOpen(next); if (!next) { setFiles([]); setError(null); } }}>
+    <Dialog.Trigger><Button size="1" variant="soft"><PlusIcon />Add icons</Button></Dialog.Trigger>
+    <Dialog.Content maxWidth="620px">
+      <Dialog.Title>Add icons to {library.label}</Dialog.Title>
+      <Dialog.Description>Upload one or more SVGs at a time. Re-uploading an unchanged file does nothing; an icon whose name matches but whose content differs replaces the stored one.</Dialog.Description>
+      <Flex direction="column" gap="4" mt="5">
+        <Box>
+          <Text as="label" htmlFor={`${inputId}-provider`}>Source format</Text>
+          <Select.Root value={provider} onValueChange={(value) => { setProvider(value as IconLibrary['provider']); setFiles([]); }}>
+            <Select.Trigger id={`${inputId}-provider`} />
+            <Select.Content>
+              <Select.Item value="individual_svg">Individual SVGs</Select.Item>
+              <Select.Item value="svg_zip">SVG ZIP archive</Select.Item>
+              <Select.Item value="svg_sprite">SVG sprite</Select.Item>
+            </Select.Content>
+          </Select.Root>
+        </Box>
+        <Box>
+          <Text as="label" htmlFor={inputId}>Files</Text>
+          <input key={provider} className="file-input" id={inputId} type="file" accept={accept} multiple={provider === 'individual_svg'} onChange={(event) => setFiles(Array.from(event.target.files ?? []))} />
+        </Box>
+        {error && <Callout.Root color="red" role="alert"><Callout.Text>{error}</Callout.Text></Callout.Root>}
+        <Flex justify="end" gap="3">
+          <Dialog.Close><Button variant="soft" color="gray">Cancel</Button></Dialog.Close>
+          <Button onClick={submit} loading={busy}>Add icons</Button>
+        </Flex>
+      </Flex>
+    </Dialog.Content>
+  </Dialog.Root>;
+}
+
+/**
+ * Edits the metadata of a library that already exists.
+ */
+function EditLibraryDialog({ theme, csrfToken, library, onSaved, onError }: {
+  theme: string;
+  csrfToken: string;
+  library: IconLibrary;
+  onSaved: () => Promise<void> | void;
+  onError: (message: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState(library.label);
+  const [license, setLicense] = useState(library.license);
+  const [source, setSource] = useState(library.source);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!label.trim()) return setError('Enter a library name.');
+    setBusy(true);
+    try {
+      await updateIconLibrary(theme, library.id, { label, license, source }, csrfToken);
+      await onSaved();
+      setOpen(false);
+      setError(null);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Unable to save the library.';
+      setError(message);
+      onError(message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <Dialog.Root open={open} onOpenChange={(next) => {
+    setOpen(next);
+    if (next) { setLabel(library.label); setLicense(library.license); setSource(library.source); setError(null); }
+  }}>
+    <Dialog.Trigger><IconButton size="1" variant="ghost" aria-label={`Edit ${library.label}`}><Pencil1Icon /></IconButton></Dialog.Trigger>
+    <Dialog.Content maxWidth="560px">
+      <Dialog.Title>Edit {library.label}</Dialog.Title>
+      <Dialog.Description>The library ID and prefix are fixed once icons are stored against them.</Dialog.Description>
+      <Flex direction="column" gap="4" mt="5">
+        <Box><Text as="label" htmlFor={`edit-label-${library.id}`}>Library name</Text><TextField.Root id={`edit-label-${library.id}`} value={label} onChange={(event) => setLabel(event.target.value)} /></Box>
+        <Flex gap="3">
+          <Box style={{ flex: 1 }}><Text as="label" htmlFor={`edit-license-${library.id}`}>License</Text><TextField.Root id={`edit-license-${library.id}`} placeholder="e.g. MIT" value={license} onChange={(event) => setLicense(event.target.value)} /></Box>
+          <Box style={{ flex: 1 }}><Text as="label" htmlFor={`edit-source-${library.id}`}>Attribution/source</Text><TextField.Root id={`edit-source-${library.id}`} value={source} onChange={(event) => setSource(event.target.value)} /></Box>
+        </Flex>
+        {error && <Callout.Root color="red" role="alert"><Callout.Text>{error}</Callout.Text></Callout.Root>}
+        <Flex justify="end" gap="3">
+          <Dialog.Close><Button variant="soft" color="gray">Cancel</Button></Dialog.Close>
+          <Button onClick={submit} loading={busy}>Save</Button>
+        </Flex>
+      </Flex>
+    </Dialog.Content>
+  </Dialog.Root>;
 }
 
 function machineName(value: string): string { return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^[-_]+|[-_]+$/g, ''); }

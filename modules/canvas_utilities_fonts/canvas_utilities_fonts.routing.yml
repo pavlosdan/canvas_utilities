@@ -33,6 +33,19 @@ canvas_utilities_fonts.api.v1.upload:
   options:
     _format: 'json'
 
+canvas_utilities_fonts.api.v1.update:
+  path: '/canvas-utilities/api/v1/fonts/{theme}/{font}'
+  defaults:
+    _controller: 'Drupal\canvas_utilities_fonts\Controller\Api\V1\FontController::update'
+  requirements:
+    _permission: 'administer canvas utilities fonts'
+    _csrf_request_header_token: 'TRUE'
+    theme: '[a-z][a-z0-9_]*'
+    font: '[a-z][a-z0-9_]*'
+  methods: [PATCH]
+  options:
+    _format: 'json'
+
 canvas_utilities_fonts.api.v1.delete:
   path: '/canvas-utilities/api/v1/fonts/{theme}/{font}'
   defaults:

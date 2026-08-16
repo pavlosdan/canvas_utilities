@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   Badge,
   Box,
@@ -15,7 +16,7 @@ import {
   Text,
   TextField,
 } from '@radix-ui/themes';
-import { CheckCircledIcon, ExclamationTriangleIcon, ResetIcon } from '@radix-ui/react-icons';
+import { CheckCircledIcon, ChevronRightIcon, ExclamationTriangleIcon, ResetIcon } from '@radix-ui/react-icons';
 
 import {
   createStyleGuideDefinition,
@@ -32,8 +33,12 @@ import type {
 } from '../style-guide-api';
 import { getPalettes } from '../palette-api';
 import type { Palette } from '../palette-api';
+import { alphaPercent, composeHexColor, parseHexColor } from '../color-value';
 import { getFonts } from '../font-api';
 import type { FontFamily } from '../font-api';
+
+/** One group of controls, as declared by a style guide definition. */
+type StyleGuideGroup = StyleGuide['groups'][string];
 
 interface Props {
   theme: string;
@@ -184,25 +189,27 @@ export default function StyleGuideWorkspace({ theme, csrfToken, canPublish, canA
         <div className="style-guide-layout">
           <div className="style-groups">
           {Object.entries(active.groups).map(([groupId, group]) => (
-            <Card key={groupId} className="style-group">
-              <Heading size="5">{group.label}</Heading>
-              <Separator size="4" my="4" />
-              <Flex direction="column" gap="5">
-                {Object.entries(group.controls).map(([controlId, control]) => (
-                  <ControlEditor
-                    key={controlId}
-                    controlId={controlId}
-                    control={control}
-                    contexts={active.contexts}
-                    values={values[controlId] ?? {}}
-                    onChange={setValue}
-                    onReset={resetValue}
-                    palettes={palettes}
-                    fonts={fonts}
-                  />
-                ))}
-              </Flex>
-            </Card>
+            <StyleGroup
+              // Keyed by guide as well, so switching guides starts collapsed
+              // again rather than inheriting the previous guide's open groups.
+              key={`${active.id}:${groupId}`}
+              group={group}
+              changedCount={countChanged(group, values, active.liveValues)}
+            >
+              {Object.entries(group.controls).map(([controlId, control]) => (
+                <ControlEditor
+                  key={controlId}
+                  controlId={controlId}
+                  control={control}
+                  contexts={active.contexts}
+                  values={values[controlId] ?? {}}
+                  onChange={setValue}
+                  onReset={resetValue}
+                  palettes={palettes}
+                  fonts={fonts}
+                />
+              ))}
+            </StyleGroup>
           ))}
           </div>
           <LivePreview guide={active} values={values} palettes={palettes} fonts={fonts} />
@@ -210,6 +217,51 @@ export default function StyleGuideWorkspace({ theme, csrfToken, canPublish, canA
       )}
     </section>
   );
+}
+
+/**
+ * One collapsible group of controls.
+ *
+ * Guides can define many groups with many controls each, so they start
+ * collapsed and the header carries enough detail — how many controls, and how
+ * many have unsaved edits — to find the right one without opening every group.
+ *
+ * A native `<details>` keeps this keyboard accessible and expandable by the
+ * browser's own find-in-page without holding open/closed state in React.
+ */
+function StyleGroup({ group, changedCount, children }: {
+  group: StyleGuideGroup;
+  changedCount: number;
+  children: ReactNode;
+}) {
+  const total = Object.keys(group.controls).length;
+  return (
+    <Card className="style-group" asChild>
+      <details>
+        <summary className="style-group__summary">
+          <ChevronRightIcon className="style-group__chevron" aria-hidden="true" />
+          <Heading size="5" className="style-group__title">{group.label}</Heading>
+          <Flex gap="2" align="center">
+            {changedCount > 0 && <Badge color="amber">{changedCount} changed</Badge>}
+            <Badge color="gray">{total} {total === 1 ? 'control' : 'controls'}</Badge>
+          </Flex>
+        </summary>
+        <Separator size="4" my="4" />
+        <Flex direction="column" gap="5">{children}</Flex>
+      </details>
+    </Card>
+  );
+}
+
+/**
+ * Counts the controls in a group whose value differs from what is live.
+ *
+ * @see the `dirty` flag, which asks the same question for the whole guide.
+ */
+function countChanged(group: StyleGuideGroup, values: StyleValues, liveValues: StyleValues): number {
+  return Object.keys(group.controls).filter(
+    (controlId) => JSON.stringify(values[controlId] ?? {}) !== JSON.stringify(liveValues[controlId] ?? {}),
+  ).length;
 }
 
 function LivePreview({ guide, values, palettes, fonts }: { guide: StyleGuide; values: StyleValues; palettes: Palette[]; fonts: FontFamily[] }) {
@@ -430,17 +482,49 @@ function ControlInput({ id, control, value, palettes, fonts, onChange }: { id: s
     );
   }
   if (control.type === 'palette_color') {
-    const options = palettes.flatMap((palette) => palette.colors.map((color) => ({ value: `${palette.id}:${color.id}`, label: `${palette.label} · ${color.label}` })));
+    // Gradients are excluded: a palette_color control feeds a CSS property
+    // expecting a <color>, and a gradient is an <image>.
+    const options = palettes.flatMap((palette) => palette.colors
+      .filter((color) => color.type !== 'gradient')
+      .map((color) => ({ value: `${palette.id}:${color.id}`, label: `${palette.label} · ${color.label}` })));
     return <Select.Root value={String(value)} onValueChange={onChange}><Select.Trigger id={id} placeholder="Choose a palette color" /><Select.Content>{options.map((option) => <Select.Item key={option.value} value={option.value}>{option.label}</Select.Item>)}</Select.Content></Select.Root>;
   }
   if (control.type === 'font_family') {
     return <Select.Root value={String(value)} onValueChange={onChange}><Select.Trigger id={id} placeholder="Choose a font family" /><Select.Content>{fonts.map((font) => <Select.Item key={font.id} value={font.id}>{font.label}</Select.Item>)}</Select.Content></Select.Root>;
   }
   if (control.type === 'color') {
+    const current = String(value);
+    const parsed = parseHexColor(current);
     return (
       <Flex gap="2" align="center">
-        <input id={`${id}-picker`} className="color-input" type="color" value={toHexColor(String(value))} onChange={(event) => onChange(event.target.value)} aria-label={`${id} color picker`} />
-        <TextField.Root id={id} value={String(value)} onChange={(event) => onChange(event.target.value)} aria-label={`${id} CSS color`} />
+        {parsed
+          ? <input
+              id={`${id}-picker`}
+              className="color-input"
+              type="color"
+              value={parsed.hex}
+              // Preserve the opacity already set; only the hue changes here.
+              onChange={(event) => onChange(composeHexColor(event.target.value, parsed.alpha))}
+              aria-label={`${id} color picker`}
+            />
+          // A value such as rgba(…) or var(…) cannot be shown by a hue picker,
+          // so it gets a preview and stays editable as text.
+          : <span className="color-input color-preview" style={{ '--canvas-utilities-swatch-color': current } as CSSProperties} title={current} />}
+        {parsed && (
+          <Flex align="center" gap="1" className="palette-alpha">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={alphaPercent(current)}
+              aria-label={`${id} opacity`}
+              title={`Opacity ${alphaPercent(current)}%`}
+              onChange={(event) => onChange(composeHexColor(parsed.hex, Number(event.target.value) / 100))}
+            />
+            <Text size="1" color="gray" className="palette-alpha__value">{alphaPercent(current)}%</Text>
+          </Flex>
+        )}
+        <TextField.Root id={id} value={current} onChange={(event) => onChange(event.target.value)} aria-label={`${id} CSS color`} />
       </Flex>
     );
   }
@@ -457,8 +541,4 @@ function Message({ message }: { message: { kind: 'success' | 'error'; text: stri
       <Callout.Text>{message.text}</Callout.Text>
     </Callout.Root>
   );
-}
-
-function toHexColor(value: string): string {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
 }

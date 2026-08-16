@@ -20,9 +20,19 @@ services:
       - '@file_system'
       - '@database'
 
+  Drupal\canvas_utilities_icons\Usage\IconUsage:
+    arguments:
+      - '@entity_type.manager'
+      - '@entity_field.manager'
+      - '@config.factory'
+      - '@keyvalue'
+      - '@file_url_generator'
+      - '@?plugin.manager.sdc'
+
   Drupal\canvas_utilities_icons\Controller\Api\V1\IconController:
     public: true
     arguments:
       - '@entity_type.manager'
       - '@Drupal\canvas_utilities_icons\Import\IconImporter'
       - '@file_url_generator'
+      - '@Drupal\canvas_utilities_icons\Usage\IconUsage'

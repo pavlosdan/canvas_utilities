@@ -119,6 +119,62 @@ final class FontController {
 
   /**
    * Deletes a font family and any managed local faces. */
+  /**
+   * Updates the editable metadata of a font family.
+   *
+   * The ID and provider are fixed once a family exists: the ID appears in the
+   * stored CSS variable names, and the provider decides whether the family is
+   * backed by uploaded files or a remote stylesheet, which is not something an
+   * edit can convert between.
+   */
+  public function update(Request $request, string $theme, string $font): JsonResponse {
+    $entity = $this->entityTypeManager->getStorage('canvas_utilities_font')->load($font);
+    if (!$entity instanceof FontFamily || $entity->getTheme() !== $theme) {
+      return $this->error('The font family does not exist.', 404);
+    }
+    try {
+      $data = json_decode($request->getContent(), TRUE, flags: JSON_THROW_ON_ERROR);
+      if (!is_array($data)) {
+        throw new \InvalidArgumentException('Invalid JSON object.');
+      }
+      if (array_key_exists('label', $data)) {
+        $label = trim((string) $data['label']);
+        if ($label === '') {
+          throw new \InvalidArgumentException('The font name cannot be empty.');
+        }
+        $entity->set('label', $label);
+      }
+      if (array_key_exists('family', $data)) {
+        $family = trim((string) $data['family']);
+        if ($family === '') {
+          throw new \InvalidArgumentException('The family name cannot be empty.');
+        }
+        $entity->set('family', $family);
+      }
+      if (array_key_exists('fallbacks', $data)) {
+        $entity->set('fallbacks', $this->fallbacks((string) $data['fallbacks']));
+      }
+      if (array_key_exists('status', $data)) {
+        $entity->setStatus((bool) $data['status']);
+      }
+      if (array_key_exists('url', $data)) {
+        if ($entity->getProvider() !== 'remote_stylesheet') {
+          throw new \InvalidArgumentException('Only a remote stylesheet family has a URL.');
+        }
+        $url = (string) $data['url'];
+        if (!$this->isSafeHttpsUrl($url)) {
+          throw new \InvalidArgumentException('Remote stylesheets require a public HTTPS URL without credentials.');
+        }
+        $entity->set('remote_url', $url);
+      }
+      $entity->save();
+      return new JsonResponse(['data' => $entity->toClientArray()]);
+    }
+    catch (\JsonException | \InvalidArgumentException $exception) {
+      return $this->error($exception->getMessage(), 422);
+    }
+  }
+
   public function delete(string $theme, string $font): JsonResponse {
     $entity = $this->entityTypeManager->getStorage('canvas_utilities_font')->load($font);
     if (!$entity instanceof FontFamily || $entity->getTheme() !== $theme) {

@@ -28,6 +28,16 @@ use Drupal\Core\StringTranslation\TranslatableMarkup;
 final class Palette extends ConfigEntityBase {
 
   /**
+   * An entry holding a CSS color, usable anywhere a color is expected.
+   */
+  public const string TYPE_COLOR = 'color';
+
+  /**
+   * An entry holding a CSS gradient, usable only as a background image.
+   */
+  public const string TYPE_GRADIENT = 'gradient';
+
+  /**
    * The entity ID. */
   protected string $id;
 
@@ -54,7 +64,7 @@ final class Palette extends ConfigEntityBase {
   /**
    * Ordered colors.
    *
-   * @var array<string, array{id: string, label: string, value: string, role: string}>
+   * @var array<string, array{id: string, label: string, value: string, role: string, type?: string}>
    */
   protected array $colors = [];
 
@@ -73,22 +83,57 @@ final class Palette extends ConfigEntityBase {
       'prefix' => $this->prefix,
       'weight' => $this->weight,
       'status' => $this->status(),
-      'colors' => array_values($this->colors),
+      'colors' => array_values(array_map(self::normalizeEntry(...), $this->colors)),
     ];
   }
 
   /**
    * Returns ordered palette colors.
    *
-   * @return array<string, array{id: string, label: string, value: string, role: string}>
+   * @return array<string, array{id: string, label: string, value: string, role: string, type: string}>
    *   Colors keyed by stable color ID.
    */
   public function getColors(): array {
     $colors = [];
     foreach ($this->colors as $color) {
+      $color = self::normalizeEntry($color);
       $colors[$color['id']] = $color;
     }
     return $colors;
+  }
+
+  /**
+   * Returns only the entries usable wherever a CSS color is expected.
+   *
+   * @return array<string, array<string, mixed>>
+   *   Solid color entries keyed by ID.
+   */
+  public function getSolidColors(): array {
+    return array_filter($this->getColors(), static fn (array $entry): bool => $entry['type'] === self::TYPE_COLOR);
+  }
+
+  /**
+   * Returns only the gradient entries.
+   *
+   * @return array<string, array<string, mixed>>
+   *   Gradient entries keyed by ID.
+   */
+  public function getGradients(): array {
+    return array_filter($this->getColors(), static fn (array $entry): bool => $entry['type'] === self::TYPE_GRADIENT);
+  }
+
+  /**
+   * Adds the entry type that palettes stored before gradients existed lack.
+   *
+   * @param array<string, mixed> $entry
+   *   A stored entry.
+   *
+   * @return array<string, mixed>
+   *   The entry with an explicit type.
+   */
+  private static function normalizeEntry(array $entry): array {
+    $entry['type'] = ($entry['type'] ?? NULL) === self::TYPE_GRADIENT ? self::TYPE_GRADIENT : self::TYPE_COLOR;
+    return $entry;
   }
 
   /**

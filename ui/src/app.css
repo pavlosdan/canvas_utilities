@@ -157,6 +157,46 @@ select {
   padding: 24px;
 }
 
+.style-group__summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Replaced by the chevron below; `display` alone hides it in WebKit. */
+  list-style: none;
+  cursor: pointer;
+}
+
+.style-group__summary::-webkit-details-marker {
+  display: none;
+}
+
+.style-group__summary:focus-visible {
+  border-radius: var(--radius-2);
+  outline: 2px solid var(--accent-8);
+  outline-offset: 4px;
+}
+
+.style-group__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.style-group__chevron {
+  flex-shrink: 0;
+  color: var(--gray-10);
+  transition: transform 120ms ease-in-out;
+}
+
+.style-group[open] .style-group__chevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .style-group__chevron {
+    transition: none;
+  }
+}
+
 .control-fieldset {
   min-width: 0;
   padding: 0;
@@ -186,6 +226,18 @@ select {
   border: 1px solid var(--gray-7);
   border-radius: var(--radius-2);
   background: var(--gray-1);
+}
+
+.color-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+.color-preview::before {
+  position: absolute;
+  background: var(--canvas-utilities-swatch-color, transparent);
+  content: '';
+  inset: 0;
 }
 
 .builder-control {
@@ -227,6 +279,32 @@ select {
   border-radius: var(--radius-3);
 }
 
+.swatch,
+.palette-color-preview,
+.color-preview {
+  /*
+   * Without a backdrop a half-transparent color is indistinguishable from a
+   * lighter opaque one, so opacity stays invisible until the color is used
+   * somewhere else.
+   */
+  background-image:
+    linear-gradient(45deg, var(--gray-5) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--gray-5) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--gray-5) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--gray-5) 75%);
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  background-size: 10px 10px;
+}
+
+/* The color sits above the checkerboard; the label sits above both. */
+.swatch::before,
+.palette-color-preview::before {
+  position: absolute;
+  background: var(--canvas-utilities-swatch-color, transparent);
+  content: '';
+  inset: 0;
+}
+
 .swatch {
   position: relative;
   min-width: 56px;
@@ -250,14 +328,76 @@ select {
 
 .palette-color-row {
   display: grid;
-  grid-template-columns: 42px 1fr 1fr 130px auto;
+  /*
+   * type, swatch, opacity, label, machine name, value, remove.
+   *
+   * The header and each entry are separate grids, so every track has to size
+   * identically in both or the labels drift away from their fields. `1fr`
+   * alone does not: its implied minimum is the content width, which differs
+   * between a short label and a text input. `minmax(0, 1fr)` makes the split
+   * purely proportional, and the action column is fixed because the header
+   * has no button to measure.
+   */
+  grid-template-columns: 104px 42px 104px minmax(0, 1fr) minmax(0, 1fr) 160px 28px;
   gap: 8px;
   align-items: center;
+}
+
+/*
+ * Column labels for the entry rows. The fields carry their own aria-labels, so
+ * these are decorative reinforcement and are hidden from assistive technology
+ * to avoid announcing each column twice.
+ */
+.palette-color-header {
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--gray-5);
+}
+
+.palette-color-header > * {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.palette-alpha input[type="range"] {
+  width: 100%;
+  min-width: 0;
+}
+
+.palette-alpha__value {
+  width: 34px;
+  flex-shrink: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.palette-color-preview {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 34px;
+  border: 1px solid var(--gray-6);
+  border-radius: var(--radius-2);
 }
 
 .palette-color-row input[type="color"] {
   width: 42px;
   height: 34px;
+}
+
+/* Stands in for the color input when the entry is a gradient. */
+.palette-gradient-preview {
+  display: block;
+  width: 42px;
+  height: 34px;
+  border: 1px solid var(--gray-6);
+  border-radius: var(--radius-2);
+  background-position: center;
+  background-size: cover;
+}
+
+/* Gradients need more width than a flat swatch to be recognizable. */
+.swatch--gradient {
+  min-width: 96px;
 }
 
 .font-grid {
@@ -290,6 +430,7 @@ select {
 }
 
 .icon-item {
+  position: relative;
   display: grid;
   min-width: 0;
   min-height: 108px;
@@ -300,6 +441,20 @@ select {
   border: 1px solid var(--gray-5);
   border-radius: var(--radius-3);
   background: var(--gray-2);
+}
+
+/* Revealed on hover or keyboard focus so the grid stays legible at rest. */
+.icon-item__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease-in-out;
+}
+
+.icon-item:hover .icon-item__remove,
+.icon-item__remove:focus-visible {
+  opacity: 1;
 }
 
 .icon-item img {
@@ -315,6 +470,20 @@ select {
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.usage-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.usage-list li {
+  margin-bottom: 2px;
+}
+
+.confirm-details {
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .file-input {
