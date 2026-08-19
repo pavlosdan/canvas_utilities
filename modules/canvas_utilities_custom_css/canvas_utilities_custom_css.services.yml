@@ -1,6 +1,13 @@
 services:
   Drupal\canvas_utilities_custom_css\CssValidator: ~
 
+  Drupal\canvas_utilities_custom_css\GeneratedCss\CustomCssGeneratedCssProvider:
+    arguments:
+      - '@entity_type.manager'
+      - '@extension.path.resolver'
+    tags:
+      - { name: canvas_utilities.generated_css_provider }
+
   Drupal\canvas_utilities_custom_css\Controller\Api\V1\CustomCssController:
     public: true
     arguments:

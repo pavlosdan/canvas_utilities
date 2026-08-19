@@ -108,7 +108,7 @@ final class StyleGuideDiscovery {
     $this->cache->set($cid, $definitions, CacheBackendInterface::CACHE_PERMANENT, [
       'config:core.extension',
       'config:system.theme',
-      'canvas_utilities_sg_definition_list',
+      'config:canvas_utilities_sg_definition_list',
     ]);
     return $definitions;
   }

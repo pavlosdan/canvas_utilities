@@ -123,10 +123,8 @@ canvas_utilities_style_guide.control:
       type: string
       label: 'Value type'
     default:
-      type: sequence
+      type: ignore
       label: 'Default values'
-      sequence:
-        type: canvas_utilities_style_guide.scalar_value
     constraints:
       type: ignore
       label: 'Value-type constraints'

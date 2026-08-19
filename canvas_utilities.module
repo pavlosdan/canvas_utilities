@@ -7,6 +7,10 @@
 
 declare(strict_types=1);
 
+use Drupal\canvas_utilities\GeneratedCss\GeneratedCssAssetManager;
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Entity\EntityInterface;
+
 /**
  * Implements hook_canvas_extension_info_alter().
  *
@@ -46,6 +50,85 @@ function canvas_utilities_canvas_extension_info_alter(array &$definitions): void
       $definition['url'] = $url . (str_contains($url, '?') ? '&' : '?') . 'v=' . $fingerprint;
     }
   }
+}
+
+/**
+ * Implements hook_page_attachments().
+ *
+ * Attaches generated-CSS placeholders on front-end pages. hook_css_alter()
+ * replaces them with immutable assets after Drupal has assembled theme CSS.
+ *
+ * @phpstan-param array<string, mixed> $attachments
+ */
+function canvas_utilities_page_attachments(array &$attachments): void {
+  $theme = \Drupal::theme()->getActiveTheme()->getName();
+  if ($theme !== (string) \Drupal::config('system.theme')->get('default')) {
+    return;
+  }
+
+  $registry = \Drupal::service('Drupal\\canvas_utilities\\GeneratedCss\\GeneratedCssProviderRegistry');
+  foreach ($registry->all() as $provider) {
+    $attachments['#attached']['library'][] = $provider->getLibrary();
+    $attachments['#cache']['tags'] = Cache::mergeTags(
+      $attachments['#cache']['tags'] ?? [],
+      array_merge($provider->getCacheTags($theme), [
+        GeneratedCssAssetManager::getCacheTag($provider->id(), $theme),
+      ]),
+    );
+  }
+}
+
+/**
+ * Implements hook_css_alter().
+ *
+ * @phpstan-param array<string, array<string, mixed>> $css
+ */
+function canvas_utilities_css_alter(array &$css): void {
+  $theme = \Drupal::theme()->getActiveTheme()->getName();
+  if ($theme !== (string) \Drupal::config('system.theme')->get('default')) {
+    return;
+  }
+
+  $registry = \Drupal::service('Drupal\\canvas_utilities\\GeneratedCss\\GeneratedCssProviderRegistry');
+  $assets = \Drupal::service('Drupal\\canvas_utilities\\GeneratedCss\\GeneratedCssAssetManager');
+  foreach ($registry->all() as $provider) {
+    $placeholder = $provider->getPlaceholderPath();
+    if (!isset($css[$placeholder])) {
+      continue;
+    }
+    $asset = $assets->getAsset($provider, $theme);
+    if ($asset === NULL) {
+      unset($css[$placeholder]);
+      continue;
+    }
+    $css[$placeholder]['data'] = $asset->uri;
+    $css[$placeholder]['preprocess'] = FALSE;
+    // Core uses a group above CSS_AGGREGATE_THEME for CSS that must win over
+    // a theme. See default_admin's hook_css_alter() implementation.
+    $css[$placeholder]['group'] = 200;
+    $css[$placeholder]['weight'] = $provider->getWeight();
+  }
+}
+
+/**
+ * Implements hook_entity_insert().
+ */
+function canvas_utilities_entity_insert(EntityInterface $entity): void {
+  \Drupal::service('Drupal\\canvas_utilities\\GeneratedCss\\GeneratedCssInvalidator')->invalidateForEntity($entity);
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function canvas_utilities_entity_update(EntityInterface $entity): void {
+  \Drupal::service('Drupal\\canvas_utilities\\GeneratedCss\\GeneratedCssInvalidator')->invalidateForEntity($entity);
+}
+
+/**
+ * Implements hook_entity_delete().
+ */
+function canvas_utilities_entity_delete(EntityInterface $entity): void {
+  \Drupal::service('Drupal\\canvas_utilities\\GeneratedCss\\GeneratedCssInvalidator')->invalidateForEntity($entity);
 }
 
 /**

@@ -1,4 +1,27 @@
 services:
+  cache.canvas_utilities_generated_css:
+    class: Drupal\Core\Cache\CacheBackendInterface
+    factory: ['@cache_factory', get]
+    arguments: [canvas_utilities_generated_css]
+    tags:
+      - { name: cache.bin }
+
+  Drupal\canvas_utilities\GeneratedCss\GeneratedCssProviderRegistry:
+    tags:
+      - { name: service_collector, tag: canvas_utilities.generated_css_provider, call: addProvider }
+
+  Drupal\canvas_utilities\GeneratedCss\GeneratedCssAssetManager:
+    arguments:
+      - '@cache.canvas_utilities_generated_css'
+      - '@file_system'
+      - '@lock'
+      - '@logger.factory'
+
+  Drupal\canvas_utilities\GeneratedCss\GeneratedCssInvalidator:
+    arguments:
+      - '@Drupal\canvas_utilities\GeneratedCss\GeneratedCssProviderRegistry'
+      - '@cache_tags.invalidator'
+
   Drupal\canvas_utilities\PendingChanges\PendingChangesAdapterInterface:
     class: Drupal\canvas_utilities\PendingChanges\DirectPublishAdapter
 

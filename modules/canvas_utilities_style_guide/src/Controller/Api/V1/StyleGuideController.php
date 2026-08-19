@@ -97,7 +97,7 @@ final class StyleGuideController {
       return $this->error('not_found', 'The visual definition does not exist.', 404);
     }
     $entity->delete();
-    $this->cacheTagsInvalidator->invalidateTags(['canvas_utilities_sg_definition_list']);
+    $this->cacheTagsInvalidator->invalidateTags(['config:canvas_utilities_sg_definition_list']);
     return new JsonResponse(NULL, 204);
   }
 
@@ -141,7 +141,7 @@ final class StyleGuideController {
       $entity->set('guide_id', $guide_id);
       $entity->set('replaces', (string) ($data['replaces'] ?? ''));
       $entity->save();
-      $this->cacheTagsInvalidator->invalidateTags(['canvas_utilities_sg_definition_list']);
+      $this->cacheTagsInvalidator->invalidateTags(['config:canvas_utilities_sg_definition_list']);
       return new JsonResponse(['data' => ['id' => $id, 'guideId' => $guide_id]], $existing === NULL ? 201 : 200);
     }
     catch (\JsonException | \InvalidArgumentException | \UnexpectedValueException $exception) {

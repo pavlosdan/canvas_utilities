@@ -1,0 +1,5 @@
+override:
+  css:
+    theme:
+      css/generated-css-placeholder.css:
+        preprocess: false

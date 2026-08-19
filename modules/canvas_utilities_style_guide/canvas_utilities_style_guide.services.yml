@@ -23,6 +23,13 @@ services:
       - '@entity_type.manager'
       - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideValueValidator'
 
+  Drupal\canvas_utilities_style_guide\GeneratedCss\StyleGuideGeneratedCssProvider:
+    arguments:
+      - '@Drupal\canvas_utilities_style_guide\StyleGuide\StyleGuideCssCompiler'
+      - '@extension.path.resolver'
+    tags:
+      - { name: canvas_utilities.generated_css_provider }
+
   Drupal\canvas_utilities_style_guide\Controller\Api\V1\StyleGuideController:
     public: true
     arguments:
