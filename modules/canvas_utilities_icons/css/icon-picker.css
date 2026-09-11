@@ -1,3 +1,9 @@
+.canvas-utilities-icon-picker {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
 .canvas-utilities-icon-picker__value {
   position: absolute !important;
   width: 1px !important;
@@ -7,6 +13,13 @@
   clip: rect(0, 0, 0, 0) !important;
   white-space: nowrap !important;
   border: 0 !important;
+}
+
+/* Canvas wraps text fields in a styled container. The input remains in the
+ * form to synchronize the prop value, but the wrapper is not part of the
+ * picker interface and would otherwise leave an empty rectangle behind. */
+.canvas-utilities-icon-picker__value-wrapper {
+  display: none;
 }
 
 .canvas-utilities-icon-picker__trigger {
@@ -23,11 +36,13 @@
   border: 1px solid var(--gray-7, #d8d8d8);
   border-radius: 0.375rem;
   cursor: pointer;
+  flex: 1;
 }
 
 .canvas-utilities-icon-picker__trigger:focus-visible,
 .canvas-utilities-icon-picker__item:focus-visible,
-.canvas-utilities-icon-picker__close:focus-visible {
+.canvas-utilities-icon-picker__close:focus-visible,
+.canvas-utilities-icon-picker__remove:focus-visible {
   outline: 2px solid var(--accent-9, #0875e1);
   outline-offset: 2px;
 }
@@ -57,6 +72,29 @@
   color: var(--accent-11, #0d74ce);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.canvas-utilities-icon-picker__remove {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  padding: 0;
+  color: var(--gray-11, #646464);
+  font-size: 1.5rem;
+  line-height: 1;
+  background: var(--gray-1, #fff);
+  border: 1px solid var(--gray-7, #d8d8d8);
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.canvas-utilities-icon-picker__remove:hover {
+  color: var(--red-11, #b42318);
+  background: var(--red-2, #fff1f0);
+}
+
+.canvas-utilities-icon-picker__remove[hidden] {
+  display: none !important;
 }
 
 .canvas-utilities-icon-picker__dialog {

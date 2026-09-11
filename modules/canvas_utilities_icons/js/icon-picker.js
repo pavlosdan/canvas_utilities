@@ -36,6 +36,13 @@
         action.textContent = 'Browse';
         trigger.append(currentPreview, currentLabel, action);
 
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'canvas-utilities-icon-picker__remove';
+        remove.setAttribute('aria-label', 'Remove icon');
+        remove.title = 'Remove icon';
+        remove.textContent = '×';
+
         const dialog = document.createElement('dialog');
         dialog.className = 'canvas-utilities-icon-picker__dialog';
         const header = document.createElement('header');
@@ -132,9 +139,19 @@
         status.className = 'canvas-utilities-icon-picker__status';
         status.setAttribute('aria-live', 'polite');
 
-        const selectIcon = (icon) => {
-          input.value = icon.value;
+        const setValue = (value) => {
+          // Canvas controls this input in React. Use the native setter so its
+          // value tracker sees the change before the input event is emitted.
+          const valueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype,
+            'value',
+          ).set;
+          valueSetter.call(input, value);
           updateCurrent();
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        const selectIcon = (icon) => {
+          setValue(icon.value);
           dialog.close();
         };
         const renderResults = () => {
@@ -169,7 +186,7 @@
         };
 
         dialog.append(header, filters, status, results);
-        picker.append(trigger, dialog);
+        picker.append(trigger, remove, dialog);
         trigger.addEventListener('click', async () => {
           renderResults();
           dialog.showModal();
@@ -179,6 +196,10 @@
           updateCurrent();
         });
         close.addEventListener('click', () => dialog.close());
+        remove.addEventListener('click', () => {
+          setValue('');
+          trigger.focus();
+        });
         dialog.addEventListener('click', (event) => {
           if (event.target === dialog) {
             dialog.close();
@@ -203,10 +224,16 @@
               : 'Choose an icon';
             trigger.title = currentLabel.textContent;
           }
+          remove.hidden = input.value === '';
         };
 
         applyLibraries(libraries);
         const insertionPoint = input.parentElement || input;
+        if (insertionPoint !== input) {
+          insertionPoint.classList.add(
+            'canvas-utilities-icon-picker__value-wrapper',
+          );
+        }
         insertionPoint.before(picker);
         input.addEventListener('change', updateCurrent);
         updateCurrent();
