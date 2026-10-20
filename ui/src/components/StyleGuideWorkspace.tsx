@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import {
   Badge,
   Box,
@@ -16,7 +16,7 @@ import {
   Text,
   TextField,
 } from '@radix-ui/themes';
-import { CheckCircledIcon, ChevronRightIcon, ExclamationTriangleIcon, ResetIcon } from '@radix-ui/react-icons';
+import { CheckCircledIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, ResetIcon } from '@radix-ui/react-icons';
 
 import {
   createStyleGuideDefinition,
@@ -39,6 +39,11 @@ import type { FontFamily } from '../font-api';
 
 /** One group of controls, as declared by a style guide definition. */
 type StyleGuideGroup = StyleGuide['groups'][string];
+
+const PREVIEW_DEFAULT_WIDTH = 680;
+const PREVIEW_MIN_WIDTH = 320;
+const PREVIEW_MAX_WIDTH = 1100;
+const EDITOR_MIN_WIDTH = 240;
 
 interface Props {
   theme: string;
@@ -145,7 +150,7 @@ export default function StyleGuideWorkspace({ theme, csrfToken, canPublish, canA
 
   if (guides.length === 0) {
     return (
-      <section aria-labelledby="style-guide-heading">
+      <section className="style-guide-workspace" aria-labelledby="style-guide-heading">
         <Heading id="style-guide-heading" size="7">Style guide</Heading>
         {message?.kind === 'error' && <Message message={message} />}
         <Card className="empty-card" mt="5">
@@ -160,7 +165,7 @@ export default function StyleGuideWorkspace({ theme, csrfToken, canPublish, canA
   }
 
   return (
-    <section aria-labelledby="style-guide-heading">
+    <section className="style-guide-workspace" aria-labelledby="style-guide-heading">
       <Flex justify="between" align="start" gap="5" wrap="wrap">
         <Box>
           <Heading id="style-guide-heading" size="7">Style guide</Heading>
@@ -186,71 +191,253 @@ export default function StyleGuideWorkspace({ theme, csrfToken, canPublish, canA
       </Flex>
 
       {active && (
-        <div className="style-guide-layout">
-          <div className="style-groups">
-          {Object.entries(active.groups).map(([groupId, group]) => (
-            <StyleGroup
-              // Keyed by guide as well, so switching guides starts collapsed
-              // again rather than inheriting the previous guide's open groups.
-              key={`${active.id}:${groupId}`}
-              group={group}
-              changedCount={countChanged(group, values, active.liveValues)}
-            >
-              {Object.entries(group.controls).map(([controlId, control]) => (
-                <ControlEditor
-                  key={controlId}
-                  controlId={controlId}
-                  control={control}
-                  contexts={active.contexts}
-                  values={values[controlId] ?? {}}
-                  onChange={setValue}
-                  onReset={resetValue}
-                  palettes={palettes}
-                  fonts={fonts}
-                />
-              ))}
-            </StyleGroup>
-          ))}
-          </div>
-          <LivePreview guide={active} values={values} palettes={palettes} fonts={fonts} />
-        </div>
+        <StyleGuideEditor
+          key={active.id}
+          guide={active}
+          values={values}
+          onChange={setValue}
+          onReset={resetValue}
+          palettes={palettes}
+          fonts={fonts}
+        />
       )}
     </section>
   );
 }
 
-/**
- * One collapsible group of controls.
- *
- * Guides can define many groups with many controls each, so they start
- * collapsed and the header carries enough detail — how many controls, and how
- * many have unsaved edits — to find the right one without opening every group.
- *
- * A native `<details>` keeps this keyboard accessible and expandable by the
- * browser's own find-in-page without holding open/closed state in React.
- */
-function StyleGroup({ group, changedCount, children }: {
-  group: StyleGuideGroup;
-  changedCount: number;
-  children: ReactNode;
+function StyleGuideEditor({ guide, values, onChange, onReset, palettes, fonts }: {
+  guide: StyleGuide;
+  values: StyleValues;
+  onChange: (controlId: string, contextId: string, value: StyleValue) => void;
+  onReset: (controlId: string, contextId: string) => void;
+  palettes: Palette[];
+  fonts: FontFamily[];
 }) {
-  const total = Object.keys(group.controls).length;
+  const groups = Object.entries(guide.groups);
+  const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.[0] ?? '');
+  const [selectedContextId, setSelectedContextId] = useState('');
+  const [query, setQuery] = useState('');
+  const [changedOnly, setChangedOnly] = useState(false);
+  const [previewWidth, setPreviewWidth] = useState(PREVIEW_DEFAULT_WIDTH);
+  const [resizingPreview, setResizingPreview] = useState(false);
+  const resizeStart = useRef({ pointerX: 0, width: PREVIEW_DEFAULT_WIDTH, maxWidth: PREVIEW_MAX_WIDTH });
+  const selectedGroup = guide.groups[selectedGroupId] ?? groups[0]?.[1];
+  const selectedGroupKey = guide.groups[selectedGroupId] ? selectedGroupId : (groups[0]?.[0] ?? '');
+  const contextEntries = selectedGroup ? contextsForGroup(guide, selectedGroup) : [];
+  const activeContextId = contextEntries.some(([id]) => id === selectedContextId)
+    ? selectedContextId
+    : (contextEntries[0]?.[0] ?? '');
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleControls = selectedGroup
+    ? Object.entries(selectedGroup.controls).filter(([controlId, control]) => {
+        if (!control.targets[activeContextId]) return false;
+        const matchesQuery = normalizedQuery === '' || `${control.label} ${control.description} ${controlId}`.toLocaleLowerCase().includes(normalizedQuery);
+        return matchesQuery && (!changedOnly || valueChanged(controlId, activeContextId, values, guide.liveValues));
+      })
+    : [];
+
+  const selectGroup = (groupId: string) => {
+    const nextGroup = guide.groups[groupId];
+    setSelectedGroupId(groupId);
+    setSelectedContextId(nextGroup ? contextsForGroup(guide, nextGroup)[0]?.[0] ?? '' : '');
+    setQuery('');
+    setChangedOnly(false);
+  };
+
+  const resizePreview = (width: number) => setPreviewWidth(Math.min(PREVIEW_MAX_WIDTH, Math.max(PREVIEW_MIN_WIDTH, Math.round(width))));
+
+  useEffect(() => {
+    if (!resizingPreview) return;
+    const move = (event: PointerEvent) => {
+      const requestedWidth = resizeStart.current.width + resizeStart.current.pointerX - event.clientX;
+      resizePreview(Math.min(resizeStart.current.maxWidth, requestedWidth));
+    };
+    const stop = () => setResizingPreview(false);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop, { once: true });
+    window.addEventListener('pointercancel', stop, { once: true });
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+    };
+  }, [resizingPreview]);
+
   return (
-    <Card className="style-group" asChild>
-      <details>
-        <summary className="style-group__summary">
-          <ChevronRightIcon className="style-group__chevron" aria-hidden="true" />
-          <Heading size="5" className="style-group__title">{group.label}</Heading>
-          <Flex gap="2" align="center">
-            {changedCount > 0 && <Badge color="amber">{changedCount} changed</Badge>}
-            <Badge color="gray">{total} {total === 1 ? 'control' : 'controls'}</Badge>
-          </Flex>
-        </summary>
-        <Separator size="4" my="4" />
-        <Flex direction="column" gap="5">{children}</Flex>
-      </details>
-    </Card>
+    <div
+      className="style-guide-layout"
+      style={{ '--style-guide-preview-width': `${previewWidth}px` } as CSSProperties}
+    >
+      <nav className="style-guide-nav" aria-label="Style guide groups">
+        <Text className="style-guide-nav__eyebrow" size="1" weight="bold" color="gray">PROPERTY GROUPS</Text>
+        <div className="style-guide-nav__list">
+          {groups.map(([groupId, group]) => {
+            const changedCount = countChanged(group, values, guide.liveValues);
+            return (
+              <button
+                key={groupId}
+                type="button"
+                className={`style-guide-nav__item${selectedGroupKey === groupId ? ' is-active' : ''}`}
+                aria-current={selectedGroupKey === groupId ? 'page' : undefined}
+                onClick={() => selectGroup(groupId)}
+              >
+                <span>{group.label}</span>
+                <small>{Object.keys(group.controls).length} properties</small>
+                {changedCount > 0 && <Badge color="amber" size="1">{changedCount} changed</Badge>}
+              </button>
+            );
+          })}
+        </div>
+        <div className="style-guide-nav__tip">
+          <Text size="2" weight="medium">Keep the canvas focused</Text>
+          <Text as="p" size="1" color="gray" mt="1">Choose one style and work through its properties. Your place is kept as you move between groups.</Text>
+        </div>
+      </nav>
+
+      <Card className="style-editor-panel">
+        {selectedGroup && activeContextId && (
+          <>
+            <Flex justify="between" align="start" gap="4" wrap="wrap" className="style-editor-panel__heading">
+              <Box>
+                <Text size="1" weight="bold" color="gray">{selectedGroup.label.toLocaleUpperCase()}</Text>
+                <Heading size="6" mt="1">{guide.contexts[activeContextId]?.label ?? activeContextId}</Heading>
+                <Text as="p" size="2" color="gray" mt="1">Edit one style at a time. Changes appear instantly in the preview.</Text>
+              </Box>
+              <Badge color="gray">{visibleControls.length} {visibleControls.length === 1 ? 'property' : 'properties'}</Badge>
+            </Flex>
+
+            {contextEntries.length > 1 && (
+              <div className="context-tabs" role="group" aria-label={`${selectedGroup.label} styles`}>
+                {contextEntries.map(([contextId, context]) => {
+                  const targetCount = countContextControls(selectedGroup, contextId);
+                  const changedCount = countContextChanges(selectedGroup, contextId, values, guide.liveValues);
+                  return (
+                    <button
+                      key={contextId}
+                      type="button"
+                      aria-pressed={activeContextId === contextId}
+                      className={`context-tab${activeContextId === contextId ? ' is-active' : ''}`}
+                      onClick={() => setSelectedContextId(contextId)}
+                    >
+                      <span>{context.label}</span>
+                      <small>{changedCount > 0 ? `${changedCount} changed` : `${targetCount} properties`}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="style-editor-toolbar">
+              <TextField.Root
+                aria-label="Find a property"
+                placeholder="Find a property…"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              >
+                <TextField.Slot><MagnifyingGlassIcon /></TextField.Slot>
+              </TextField.Root>
+              <Text as="label" size="2" className="changed-filter">
+                <Switch size="1" checked={changedOnly} onCheckedChange={setChangedOnly} />
+                Changed only
+              </Text>
+            </div>
+
+            <div className="property-list">
+              {visibleControls.map(([controlId, control]) => (
+                <PropertyEditor
+                  key={`${controlId}:${activeContextId}`}
+                  controlId={controlId}
+                  contextId={activeContextId}
+                  contextLabel={guide.contexts[activeContextId]?.label ?? activeContextId}
+                  control={control}
+                  value={values[controlId]?.[activeContextId] ?? control.default[activeContextId] ?? ''}
+                  overridden={values[controlId]?.[activeContextId] !== undefined}
+                  changed={valueChanged(controlId, activeContextId, values, guide.liveValues)}
+                  onChange={(next) => onChange(controlId, activeContextId, next)}
+                  onReset={() => onReset(controlId, activeContextId)}
+                  palettes={palettes}
+                  fonts={fonts}
+                />
+              ))}
+              {visibleControls.length === 0 && (
+                <div className="property-list__empty">
+                  <Heading size="3">No matching properties</Heading>
+                  <Text as="p" size="2" color="gray" mt="1">Try another search or show all properties.</Text>
+                  <Button mt="3" size="1" variant="soft" onClick={() => { setQuery(''); setChangedOnly(false); }}>Show all</Button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </Card>
+
+      <div
+        className="preview-resizer"
+        role="separator"
+        aria-label="Resize live preview"
+        aria-orientation="vertical"
+        aria-valuemin={PREVIEW_MIN_WIDTH}
+        aria-valuemax={resizeStart.current.maxWidth}
+        aria-valuenow={previewWidth}
+        tabIndex={0}
+        title="Drag to resize. Double-click to reset."
+        onPointerDown={(event) => {
+          event.preventDefault();
+          const layout = event.currentTarget.parentElement;
+          const editor = event.currentTarget.previousElementSibling;
+          const preview = event.currentTarget.nextElementSibling;
+          const editorWidth = editor?.getBoundingClientRect().width ?? EDITOR_MIN_WIDTH;
+          const renderedPreviewWidth = preview?.getBoundingClientRect().width ?? previewWidth;
+          resizeStart.current = {
+            pointerX: event.clientX,
+            width: renderedPreviewWidth,
+            maxWidth: Math.min(PREVIEW_MAX_WIDTH, renderedPreviewWidth + Math.max(0, editorWidth - EDITOR_MIN_WIDTH), layout?.getBoundingClientRect().width ?? PREVIEW_MAX_WIDTH),
+          };
+          setPreviewWidth(Math.round(renderedPreviewWidth));
+          setResizingPreview(true);
+        }}
+        onDoubleClick={() => resizePreview(PREVIEW_DEFAULT_WIDTH)}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && event.key !== 'Home') return;
+          event.preventDefault();
+          if (event.key === 'Home') resizePreview(PREVIEW_DEFAULT_WIDTH);
+          else {
+            const editorWidth = event.currentTarget.previousElementSibling?.getBoundingClientRect().width ?? EDITOR_MIN_WIDTH;
+            const renderedPreviewWidth = event.currentTarget.nextElementSibling?.getBoundingClientRect().width ?? previewWidth;
+            const availableMaximum = Math.min(PREVIEW_MAX_WIDTH, renderedPreviewWidth + Math.max(0, editorWidth - EDITOR_MIN_WIDTH));
+            const nextWidth = previewWidth + (event.key === 'ArrowLeft' ? 24 : -24);
+            resizePreview(Math.min(availableMaximum, nextWidth));
+          }
+        }}
+      >
+        <span aria-hidden="true" />
+      </div>
+
+      {resizingPreview && <div className="preview-resize-overlay" aria-hidden="true" />}
+
+      <LivePreview guide={guide} values={values} palettes={palettes} fonts={fonts} />
+    </div>
   );
+}
+
+function contextsForGroup(guide: StyleGuide, group: StyleGuideGroup) {
+  return Object.entries(guide.contexts).filter(([contextId]) =>
+    Object.values(group.controls).some((control) => Boolean(control.targets[contextId])),
+  );
+}
+
+function countContextControls(group: StyleGuideGroup, contextId: string): number {
+  return Object.values(group.controls).filter((control) => Boolean(control.targets[contextId])).length;
+}
+
+function countContextChanges(group: StyleGuideGroup, contextId: string, values: StyleValues, liveValues: StyleValues): number {
+  return Object.keys(group.controls).filter((controlId) =>
+    group.controls[controlId].targets[contextId] && valueChanged(controlId, contextId, values, liveValues),
+  ).length;
+}
+
+function valueChanged(controlId: string, contextId: string, values: StyleValues, liveValues: StyleValues): boolean {
+  return JSON.stringify(values[controlId]?.[contextId]) !== JSON.stringify(liveValues[controlId]?.[contextId]);
 }
 
 /**
@@ -279,7 +466,18 @@ function LivePreview({ guide, values, palettes, fonts }: { guide: StyleGuide; va
     style.textContent = css;
   };
   useEffect(update, [css]);
-  return <aside className="preview-panel" aria-label="Live theme preview"><Flex justify="between" align="center" mb="3"><Heading size="4">Live preview</Heading><Badge color="green">Draft values</Badge></Flex><iframe ref={frame} title={`${guide.label} preview`} src={guide.preview.path} sandbox="allow-same-origin" onLoad={update} /></aside>;
+  return (
+    <aside className="preview-panel" aria-label="Live theme preview">
+      <Flex justify="between" align="center" mb="3"><Heading size="4">Live preview</Heading><Badge color="green">Draft values</Badge></Flex>
+      <iframe
+        ref={frame}
+        title={`${guide.label} preview`}
+        src={guide.preview.path}
+        sandbox="allow-same-origin"
+        onLoad={update}
+      />
+    </aside>
+  );
 }
 
 export function compilePreviewCss(guide: StyleGuide, values: StyleValues, palettes: Palette[], fonts: FontFamily[]): string {
@@ -433,39 +631,46 @@ function defaultConstraints(type: StyleControl['type']): StyleControl['constrain
   return {};
 }
 
-function ControlEditor({ controlId, control, contexts, values, onChange, onReset, palettes, fonts }: {
+function PropertyEditor({ controlId, contextId, contextLabel, control, value, overridden, changed, onChange, onReset, palettes, fonts }: {
   controlId: string;
+  contextId: string;
+  contextLabel: string;
   control: StyleControl;
-  contexts: StyleGuide['contexts'];
-  values: Record<string, StyleValue>;
-  onChange: (controlId: string, contextId: string, value: StyleValue) => void;
-  onReset: (controlId: string, contextId: string) => void;
+  value: StyleValue;
+  overridden: boolean;
+  changed: boolean;
+  onChange: (value: StyleValue) => void;
+  onReset: () => void;
   palettes: Palette[];
   fonts: FontFamily[];
 }) {
+  const inputId = `${controlId}-${contextId}`;
   return (
-    <fieldset className="control-fieldset">
-      <legend><Text weight="bold">{control.label}</Text></legend>
-      {control.description && <Text as="p" size="2" color="gray" mt="1">{control.description}</Text>}
-      <div className="context-grid">
-        {Object.entries(control.targets).map(([contextId]) => {
-          const inherited = values[contextId] === undefined;
-          const value = values[contextId] ?? control.default[contextId] ?? '';
-          return (
-            <div key={contextId} className="context-control">
-              <Flex justify="between" align="center" mb="2">
-                <Text as="label" htmlFor={`${controlId}-${contextId}`} size="2" weight="medium">{contexts[contextId]?.label ?? contextId}</Text>
-                <Flex gap="2" align="center">
-                  <Badge color={inherited ? 'gray' : 'green'}>{inherited ? 'Default' : 'Overridden'}</Badge>
-                  {!inherited && <Button aria-label={`Reset ${control.label} for ${contexts[contextId]?.label}`} size="1" variant="ghost" color="gray" onClick={() => onReset(controlId, contextId)}><ResetIcon /></Button>}
-                </Flex>
-              </Flex>
-              <ControlInput id={`${controlId}-${contextId}`} control={control} value={value} palettes={palettes} fonts={fonts} onChange={(next) => onChange(controlId, contextId, next)} />
-            </div>
-          );
-        })}
+    <div className={`property-row${changed ? ' is-changed' : ''}`}>
+      <div className="property-row__label">
+        <Flex gap="2" align="center" wrap="wrap">
+          <Text as="label" htmlFor={inputId} size="2" weight="bold">{control.label}</Text>
+          <Badge size="1" color={overridden ? 'green' : 'gray'}>{overridden ? 'Override' : 'Theme default'}</Badge>
+          {changed && <Badge size="1" color="amber">Changed</Badge>}
+        </Flex>
+        {control.description && <Text as="p" size="1" color="gray" mt="1">{control.description}</Text>}
       </div>
-    </fieldset>
+      <div className="property-row__control">
+        <ControlInput id={inputId} control={control} value={value} palettes={palettes} fonts={fonts} onChange={onChange} />
+      </div>
+      <Button
+        className="property-row__reset"
+        aria-label={`Use theme default for ${control.label} on ${contextLabel}`}
+        title="Use theme default"
+        size="1"
+        variant="ghost"
+        color="gray"
+        disabled={!overridden}
+        onClick={onReset}
+      >
+        <ResetIcon />
+      </Button>
+    </div>
   );
 }
 
