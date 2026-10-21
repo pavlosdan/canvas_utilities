@@ -139,5 +139,5 @@ canvas_utilities_style_guide.control:
             label: 'CSS property'
 
 canvas_utilities_style_guide.scalar_value:
-  type: undefined
+  type: ignore
   label: 'Typed scalar style-guide value'
